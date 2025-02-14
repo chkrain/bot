@@ -15,9 +15,19 @@ from telegram.ext import CallbackQueryHandler
 from telegram.constants import ParseMode
 from telegram.error import BadRequest, TelegramError
 
+# -----------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+
+NEW = 'Добавлено: GITHUB. Бот хостится через Git Hub Actions (не предназначено для хостинга ботов, поэтому может лагать)\nКаждые 5 минут может перезагружаться\nЕжедневные награды теперь раз в сутки. Количество начисляемых очков увеличено.'
+FIXED = 'Исправлено: '
+
+# -----------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+
 TOKEN = os.getenv("TOKEN")
 
-# LOG_CHANNEL = "-4657386551"
 LOG_CHANNEL = "-1002470364095"
 
 lock = asyncio.Lock()
@@ -30,22 +40,8 @@ logger = logging.getLogger(__name__)
 
 bot = Bot(token=TOKEN)
 
-# Глобальный словарь для временного хранения хэшей семей
 family_hashes = {}
-
-# Глобальная переменная для хранения информации о последних играх
 GUESS_GAMES = {}
-
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-
-NEW = 'Добавлено: GITHUB. Бот хостится через Git Hub Actions (не предназначено для хостинга ботов, поэтому может лагать)\nКаждые 5 минут может перезагружаться'
-FIXED = 'Исправлено: '
-
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
 
 PREDICTIONS = [
     "😄 Мои магические силы подсказывают мне, что в ближайшее время тебя ждет неожиданная встреча",
@@ -121,7 +117,6 @@ def load_user_data():
         with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # Проверяем, действительно ли файл загружен
         if not isinstance(data, dict):
             logger.error("Файл users_data.json загружен неправильно! Загружаем пустую базу.")
             return {}
@@ -129,7 +124,6 @@ def load_user_data():
         logger.info(f"✅ Загружено пользователей: {len(data)}")
         logger.debug(f"📜 Все ID пользователей: {list(data.keys())}")
 
-        # Приводим все user_id к строке и дополняем недостающие поля
         updated_data = {}
         for user_id, user_info in data.items():
             str_user_id = str(user_id)
@@ -316,42 +310,35 @@ async def set_username(update: Update, context: CallbackContext):
     user_id = str(user.id)
     new_username = " ".join(context.args) if context.args else user.username
     
-    # Загружаем данные пользователя
     user_data = load_user_data()
     
-    # Проверка, существует ли пользователь в данных
     if user_id not in user_data:
-        # Если пользователь не существует в данных, создаем его с дефолтными значениями
         user_data[user_id] = {
-            "username": user.username,         # Имя пользователя, которое может изменяться
-            "default_username": user.username,  # Имя пользователя, которое остается неизменным
-            "role": "участник",                 # Роль по умолчанию
-            "warnings": 0,                      # Количество предупреждений
-            "family": None,                     # Семья (если есть)
-            "family_role": None,                # Роль в семье (если есть)
+            "username": user.username,         
+            "default_username": user.username,  
+            "role": "участник",                 
+            "warnings": 0,                      
+            "family": None,                     
+            "family_role": None,                
         }
     
-    # Обновляем имя пользователя
     user_data[user_id]["username"] = new_username
     save_user_data(user_data)
     
-    # Отправляем сообщение о успешном изменении
     await reply_and_delete(update, context, f"✅ Твой ник изменен на {new_username}")
     await log_to_channel("INFO", f"Пользователь с неизменным ником {user_data['default_username']} поставил новый изменяемый ник: {user_data['username']}")
     
 # Команды /warn и /mute + авто-мут
 async def warn_user(update: Update, context: CallbackContext):
-    # Проверка прав
     user_data = load_user_data()
-    moderator = update.message.from_user  # Получаем объект модератора
+    moderator = update.message.from_user  
     moderator_id = str(moderator.id)
-    moderator_username = moderator.username or f"ID:{moderator_id}"  # На случай, если username отсутствует
+    moderator_username = moderator.username or f"ID:{moderator_id}" 
 
     if user_data.get(moderator_id, {}).get("role") not in ["модератор", "администратор", "стример"]:
         await reply_and_delete(update, context, "❌ Куда мы лезем, тут только для модераторов и выше")
         return
 
-    # Получение целевого пользователя
     if not context.args:
         await reply_and_delete(update, context, "Используй /warn @username")
         return
@@ -363,24 +350,20 @@ async def warn_user(update: Update, context: CallbackContext):
         await reply_and_delete(update, context, "❌ Нет такого пользователя, ты за меня придурка не держи")
         return
 
-    # Добавление предупреждения
     user_data[target_id]["warnings"] += 1
     save_user_data(user_data)
 
-    # Логируем варн
     await log_to_channel(
         "WARNING", 
         f"🛑 Модератор @{moderator_username} выдал предупреждение пользователю @{target_username}. "
         f"Всего предов: {user_data[target_id]['warnings']}"
     )
 
-    # Проверка на 3 предупреждения
     if user_data[target_id]["warnings"] >= 3:
         user_data[target_id]["warnings"] = 2
         await mute_user_logic(context, target_id, timedelta(hours=1))
         await reply_and_delete(update, context, f"⚠️ Пользователь {target_username} получил мут на 1 час за 3 предупреждения!\nПредупреждения сброшены до {user_data[target_id]['warnings']}")
         
-        # Логируем мут
         await log_to_channel(
             "WARNING", 
             f"🔇 Модератор @{moderator_username} замутил @{target_username} на 1 час "
@@ -395,7 +378,6 @@ async def kick_from_family(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     user_data = load_user_data()
     
-    # Проверка прав (глава семьи или админ)
     if user_data.get(user_id, {}).get("role") not in ["администратор"] or \
        user_data.get(user_id, {}).get("family_role") != "Глава":
         await reply_and_delete(update, context, "❌ Только глава семьи или администратор может выгонять, ваще офигели?")
@@ -431,7 +413,6 @@ async def family_action(update: Update, context: CallbackContext):
     user_data = load_user_data()
     chat_id = update.effective_chat.id
 
-    # Проверка и сброс счетчиков
     now = datetime.now()
     last_reset_str = user_data.get(user_id, {}).get("daily_actions", {}).get("last_reset", "2000-01-01")
     last_reset = datetime.fromisoformat(last_reset_str)
@@ -448,7 +429,6 @@ async def family_action(update: Update, context: CallbackContext):
     # Определяем тип действия
     action_type = update.message.text.split()[0].lstrip('/').lower()
     
-    # Проверка лимитов
     action_limits = {
         'hug': 25,
         'kiss': 10,
@@ -464,7 +444,6 @@ async def family_action(update: Update, context: CallbackContext):
             )
             return
 
-    # Проверка аргументов
     if not context.args:
         await reply_and_delete(update, context, f"Используй: /{action_type} @username")
         return
@@ -1158,7 +1137,7 @@ def pluralize_points(n):
 # Ежедневное начисление очков
 async def daily_points_task():
     while True:
-        await asyncio.sleep(10800)  # 3 часа
+        await asyncio.sleep(86400)  # сутки
         user_data = load_user_data()
         families = defaultdict(list)
 
@@ -1171,8 +1150,8 @@ async def daily_points_task():
 
         # Начисляем очки
         for fam_name, members in families.items():
-            base_points = 6
-            multiplier = 24 * len(members)
+            base_points = 48
+            multiplier = 192 * len(members)
             total = min(base_points + multiplier, 1000)  # Максимум 1000 на семью
             points_per_member = int(total / len(members))
             family_bonus = 0  # Общий бонус семьи
