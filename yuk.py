@@ -43,6 +43,8 @@ bot = Bot(token=TOKEN)
 family_hashes = {}
 GUESS_GAMES = {}
 
+LAUGHTER = ['хахахахах', 'хыхахвхаувзхпамх', 'АХАХВХЖВЖХАЖХАВХВ', 'дзаЗДАЗДАЗВВ', 'ххАХПХПХ', 'АХАХАХВХАВХ', 'НЬЕХЕХЕХЕХЕХЕХ', 'ЛОЛ ЧЁ БЛЯЯ']
+
 PREDICTIONS = [
     "😄 Мои магические силы подсказывают мне, что в ближайшее время тебя ждет неожиданная встреча",
     "😁 Верь в себя, и всё получится! Это не мои слова, это духи подсказали мне",
@@ -453,13 +455,13 @@ async def family_action(update: Update, context: CallbackContext):
 
     # Проверки
     if not target_id:
-        await reply_and_delete(update, context, "❌ Пользователь не найден.")
+        await reply_and_delete(update, context, "❌ Пользователь не найден или съебался с канала")
         return
     if user_id == target_id:
-        await reply_and_delete(update, context, "❌ Нельзя взаимодействовать с самим собой.")
+        await reply_and_delete(update, context, "❌ Нельзя взаимодействовать с самим собой, шалунишка")
         return
     if user_data[user_id].get("family") != user_data[target_id].get("family"):
-        await reply_and_delete(update, context, "❌ Можно взаимодействовать только с членами своей семьи.")
+        await reply_and_delete(update, context, "❌ Можно взаимодействовать только с членами своей семьи")
         return
     if action_type not in ACTION_TYPES:
         await reply_and_delete(update, context, "❌ Неверное действие. Доступно: " + ", ".join(ACTION_TYPES.keys()))
@@ -470,10 +472,10 @@ async def family_action(update: Update, context: CallbackContext):
     family_points = sum(data["family_points"] for data in user_data.values() if data.get("family") == family_name)
     
     if action_type == "kiss" and family_points < 150:
-        await reply_and_delete(update, context, "❌ Нужно минимум 150 очков семьи для поцелуя.")
+        await reply_and_delete(update, context, "❌ Нужно минимум 150 очков семьи для поцелуя, узнайте друг друга хотяб хз")
         return
     if action_type == "sex" and family_points < 1000:
-        await reply_and_delete(update, context, "❌ Нужно минимум 1000 очков семьи для секса.")
+        await reply_and_delete(update, context, "❌ Нужно минимум 1000 очков и 300 рубасов на гандоны для секса")
         return
 
     # Формируем callback_data
@@ -502,7 +504,7 @@ async def family_action(update: Update, context: CallbackContext):
         message = await context.bot.send_message(
             chat_id=chat_id,
             text=f"🎭 {user_data[user_id]['username']} хочет {ACTION_TYPES[action_type]} @{target_username}!\n"
-                 f"@{target_username}, подтвердите действие:",
+                 f"@{target_username}, чё думаешь:",
             reply_markup=reply_markup
         )
         PENDING_ACTIONS[action_key]['message_id'] = message.message_id
@@ -516,17 +518,17 @@ async def set_family_title(update: Update, context: CallbackContext):
     user_data = load_user_data()
     
     if user_data.get(user_id, {}).get("role") not in ["жулик", "стример", "администратор"]:
-        await reply_and_delete( update, context, "❌ Только обладатели жулик могут менять семейное звание.")
+        await reply_and_delete( update, context, "❌ Только обладатели роли жулик могут менять титул, накопи бабок")
         return
     
     if not context.args:
-        await reply_and_delete(update, context, "❌ Используйте /settitle [звание]")
+        await reply_and_delete(update, context, "❌ Используй /settitle [титул]")
         return
     
     new_title = " ".join(context.args)
     user_data[user_id]["family_title"] = new_title
     save_user_data(user_data)
-    await reply_and_delete(update, context, f"✅ У тебя новое семейное звание: {new_title}\nПосмотреть можно командой")
+    await reply_and_delete(update, context, f"✅ У тебя новый титул: {new_title}\nПосмотреть можно командой /user")
 
 
 # Обработчик ответов
@@ -543,13 +545,13 @@ async def handle_action_response(update: Update, context: CallbackContext):
 
         # Проверяем, что действие нажал целевой пользователь
         if str(query.from_user.id) != target_id:
-            await query.answer("❌ Это действие не для вас!", show_alert=True)
+            await query.answer("❌ Это действие не для тебя!", show_alert=True)
             return
 
         # Проверяем наличие действия
         action_data = PENDING_ACTIONS.get(action_key)
         if not action_data:
-            await query.answer("❌ Запрос устарел или отменён.")
+            await query.answer("❌ Запрос устарел или отменён")
             return
 
         user_data = load_user_data()
@@ -993,7 +995,7 @@ async def join_family(update: Update, context: CallbackContext):
     )
 
     if not family_head:
-        await reply_and_delete(update, context, "❌ Семья не найдена или в ней нет главы!")
+        await reply_and_delete(update, context, "❌ Семья не найдена или в ней нет главы. Если ГЛАВА поменял роль, кто-либо другой должен поменять роль на ГЛАВУ")
         return
 
     # Формируем callback_data с хэшем
@@ -1022,7 +1024,7 @@ async def join_family(update: Update, context: CallbackContext):
         asyncio.create_task(delete_message_later(message, 60))  # Удаление через 60 сек
     except BadRequest as e:
         logger.error(f"Ошибка отправки сообщения: {e}")
-        await reply_and_delete(update, context, "❌ Не удалось отправить запрос.")
+        await reply_and_delete(update, context, "❌ Не удалось отправить запрос")
 
 
 async def handle_join_request(update: Update, context: CallbackContext):
@@ -1098,7 +1100,7 @@ async def leave_family(update: Update, context: CallbackContext):
     user_data[user_id]["family_role"] = None
     save_user_data(user_data)
     
-    await reply_and_delete(update, context, "✅ Ты теперь не принадлежишь семье, че теперь по клубам?)")
+    await reply_and_delete(update, context, "✅ Ты больше не принадлежишь семье, че теперь по 👄 клубам 👄 ?)")
 
 async def set_family_role(update: Update, context: CallbackContext):
     if not context.args:
@@ -1121,7 +1123,7 @@ async def set_family_role(update: Update, context: CallbackContext):
     user_data.setdefault(user_id, {})["family_role"] = new_role
     save_user_data(user_data)
     
-    await reply_and_delete(update, context, f"✅ Твоя семейная роль изменена на: {new_role}")
+    await reply_and_delete(update, context, f"✅ Твоя семейная роль изменена на: {new_role}. {random.choice(LAUGHTER)} ты серьезно??")
 
 # очко
 def pluralize_points(n):
@@ -1166,7 +1168,7 @@ async def daily_points_task():
                 family_log.append(f"Бонус у @{current_username} ({default_username}): +{pluralize_points(points_per_member)}")
             
             # Добавляем общий бонус семьи
-            family_log.append(f"Общий бонус семьи [{fam_name}]: {pluralize_points(family_bonus)}")
+            family_log.append(f"Общий бонус у [{fam_name}] составляет {pluralize_points(family_bonus)}")
             family_log.append(f"--------------------------------------------")
 
             all_log_messages.append("\n".join(family_log))
@@ -1177,7 +1179,7 @@ async def daily_points_task():
         if all_log_messages:
             await log_to_channel("INFO", "\n".join(all_log_messages))
 
-        await log_to_channel("INFO", "✅ Ежедневные бонусы начислены!")
+        await log_to_channel("INFO", "✅ Ежедневные бонусы начислены! 📢 ВНИМАНИЕ! Зарплата. Пойду дом куплю 💵💸💴")
 
 
 # 1. /faminfo
@@ -1221,7 +1223,7 @@ async def topfam(update: Update, context: CallbackContext):
             families[data["family"]] += data.get("family_points", 0)
 
     if not families:
-        await reply_and_delete(update, context, "❌ Семьи не найдены.")
+        await reply_and_delete(update, context, "❌ Семьи не найдены")
         return
 
     sorted_families = sorted(families.items(), key=lambda x: x[1], reverse=True)
@@ -1256,7 +1258,7 @@ async def unmute_user(update: Update, context: CallbackContext):
     target_id = next((uid for uid, data in user_data.items() if data["username"] == target_username), None)
     
     if not target_id:
-        await reply_and_delete(update, context, "❌ Пользователь не найден!")
+        await reply_and_delete(update, context, "❌ Не помню такой транзакции, у вас есть молоко?")
         return
     
     # Снимаем мут
@@ -1266,7 +1268,7 @@ async def unmute_user(update: Update, context: CallbackContext):
     # Логируем действие
     await log_to_channel(
         "INFO", 
-        f"🔊 Модератор @{moderator_username} размутил пользователя @{target_username}\n"
+        f"🔊 Мистер пипискин @{moderator_username} размутил пользователя @{target_username}\n"
         f"• ID модератора: {moderator_id}\n"
         f"• ID пользователя: {target_id}"
     )
@@ -1289,7 +1291,7 @@ async def user_info(update: Update, context: CallbackContext):
     if target_id not in user_data:
         logger.warning(f"❌ Пользователь {target_id} не найден в user_data!")
         logger.debug(f"📜 Все загруженные ID: {list(user_data.keys())}")
-        await update.message.reply_text(f"❌ Данные о вас не найдены. ID: {target_id}")
+        await update.message.reply_text(f"❌ О тебе нет данных, голубиная ты пиписька ID: {target_id}")
         return
 
     data = user_data[target_id]
@@ -1366,7 +1368,7 @@ async def points(update: Update, context: CallbackContext):
     target_id = next((uid for uid, data in user_data.items() if data["username"] == target_username), None)
     
     if not target_id or not user_data[target_id].get("family"):
-        await reply_and_delete(update, context, "❌ Боту, видимо, гг. Или какая-то ошибка. Подумаешь какая?")
+        await reply_and_delete(update, context, "❌ Боту, видимо, гг. Или какая-то ошибка. Вау-вау-вау юпиё юпией")
         return
     
     points = user_data[target_id]["family_points"]
@@ -1419,17 +1421,17 @@ async def steal_points(update: Update, context: CallbackContext):
     
     # Проверка прав и ограничений
     if user_data.get(user_id, {}).get("role") not in ["жулик", "стример", "администратор"]:
-        await reply_and_delete(update, context, "❌ Только жулики могут воровать очки.")
+        await reply_and_delete(update, context, "❌ Только жулики могут воровать очки, ты же не опустишься до такого?")
         return
     
     if not user_data[user_id].get("family"):
-        await reply_and_delete(update, context, "❌ Сперва вступи в семью")
+        await reply_and_delete(update, context, "❌ Сперма вступи в семью")
         return
     
     # Проверка времени последней кражи
     last_theft = user_data[user_id].get("last_theft")
     if last_theft and (datetime.now() - datetime.fromisoformat(last_theft)).days < 1:
-        await reply_and_delete(update, context, "❌ Кража доступна раз в сутки.")
+        await reply_and_delete(update, context, "❌ Кража доступна раз в сутки, побойся Бога")
         return
     
     # Получаем семью вора
@@ -1461,7 +1463,7 @@ async def steal_points(update: Update, context: CallbackContext):
     # Вычисляем общие очки семьи-цели
     family_points = sum(user_data[uid].get("family_points", 0) for uid in target_members)
     if family_points <= 0:
-        await reply_and_delete(update, context, "❌ У выбранной семьи нет очков каким-то образом")
+        await reply_and_delete(update, context, "❌ У выбранной семьи нет очков.. каким-то образом")
         return
     
     # Генерируем процент кражи (1-5%)
