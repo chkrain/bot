@@ -1,0 +1,144 @@
+{
+    "1087968824": {
+        "username": "GroupAnonymousBot",
+        "role": "администратор",
+        "family": "Семья GroupAnonymousBot",
+        "family_role": "Глава",
+        "family_points": 346.0,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "None"
+    },
+    "706718979": {
+        "username": "raincher",
+        "role": "администратор",
+        "family": "Семья главврач",
+        "family_role": "lellele",
+        "family_points": 10000,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "шустрый джентельмен",
+        "default_username": "None",
+        "daily_actions": {
+            "last_reset": "2025-02-13T01:35:09.345119",
+            "hug": 0,
+            "kiss": 0,
+            "sex": 2
+        },
+        "last_prediction": "2025-02-13T18:40:28.691180",
+        "last_guess_game": "2025-02-13T22:43:05.643942"
+    },
+    "1649025293": {
+        "username": "пипупиу",
+        "role": "администратор",
+        "family": "юпиё",
+        "family_role": "Глава",
+        "family_points": 347.0,
+        "warnings": 1,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "None"
+    },
+    "837800391": {
+        "username": "главврач",
+        "role": "модератор",
+        "family": "Семья главврач",
+        "family_role": "мама поля",
+        "family_points": 10000,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "None",
+        "last_guess_game": "2025-02-13T15:38:16.017448",
+        "attempts": 1,
+        "daily_actions": {
+            "last_reset": "2025-02-13T15:50:04.698587",
+            "hug": 0,
+            "kiss": 0,
+            "sex": 0
+        }
+    },
+    "6636046311": {
+        "username": "g",
+        "role": "участник",
+        "family": null,
+        "family_role": null,
+        "family_points": 0,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "None"
+    },
+    "136817688": {
+        "username": "Channel_Bot",
+        "role": "администратор",
+        "family": "Семья главврач",
+        "family_role": "Участник",
+        "family_points": 10000,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": null,
+        "last_prediction": "2025-02-13T15:16:00.709331",
+        "last_guess_game": "2025-02-13T22:29:39.668938",
+        "attempts": 1
+    },
+    "5862578294": {
+        "username": "Миллионер",
+        "role": "участник",
+        "family": "AQMS Famq",
+        "family_role": "Глава",
+        "family_points": 347.0,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "Ell1on3rs_1337"
+    },
+    "451139311": {
+        "username": "дед токсик",
+        "role": "участник",
+        "family": "татаренки",
+        "family_role": "Глава",
+        "family_points": 347.0,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "LaTTTim",
+        "last_guess_game": "2025-02-13T22:31:56.891942",
+        "attempts": 1
+    },
+    "635660816": {
+        "username": "laz_hel",
+        "role": "стример",
+        "family": "Семья главврач",
+        "family_role": "Участник",
+        "family_points": 10000,
+        "warnings": 1,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "laz_hel"
+    },
+    "2089561424": {
+        "username": "roefj",
+        "role": "участник",
+        "family": "Семья главврач",
+        "family_role": "Участник",
+        "family_points": 10000,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "roefj"
+    },
+    "1011512356": {
+        "username": "Mifi_q",
+        "role": "участник",
+        "family": "Семья главврач",
+        "family_role": "Участник",
+        "family_points": 10000,
+        "warnings": 0,
+        "muted_until": null,
+        "family_title": "Нет титула",
+        "default_username": "Mifi_q"
+    }
+}
