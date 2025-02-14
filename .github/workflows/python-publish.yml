@@ -1,12 +1,10 @@
 name: Run Telegram Bot
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"  # Запуск каждые 5 минут
-  workflow_dispatch:  # Возможность ручного запуска
   push:
     branches:
       - main
+  workflow_dispatch:  # Ручной запуск
 
 jobs:
   run-bot:
@@ -24,7 +22,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Stop previous bot instance
+        run: pkill -f "python yuk.py" || echo "No previous instance found"
+
       - name: Run bot
         env:
           TOKEN: ${{ secrets.TOKEN }}
-        run: python yuk.py
+        run: nohup python yuk.py &
