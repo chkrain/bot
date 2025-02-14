@@ -15,7 +15,7 @@ from telegram.ext import CallbackQueryHandler
 from telegram.constants import ParseMode
 from telegram.error import BadRequest, TelegramError
 
-TOKEN = "7846151557:AAH10hGkMelypq97ixWj-NJwflYwQBhmNYM"
+TOKEN = os.getenv("TOKEN")
 
 # LOG_CHANNEL = "-4657386551"
 LOG_CHANNEL = "-1002470364095"

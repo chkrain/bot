@@ -23,5 +23,5 @@ jobs:
 
       - name: Run bot
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TOKEN: ${{ secrets.TOKEN }}
         run: python yuk.py
