@@ -1,14 +1,14 @@
 name: Run Telegram Bot
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Ручной запуск
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */4 * * *' 
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repo
