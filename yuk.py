@@ -1503,10 +1503,10 @@ async def brigada(update: Update, context: CallbackContext):
         text = (
             "Бригада: это вроде катя самбука ее заставили раздеться на концерте или где я хз\n"
         )
-        audio_path = "C:/Users/user/Desktop/TGYUK/mp/brig.mp3"
-        audio_path_1 = "C:/Users/user/Desktop/TGYUK/mp/brig_1.mp3"
-        audio_path_2 = "C:/Users/user/Desktop/TGYUK/mp/brig_2.mp3"
-        audio_path_3 = "C:/Users/user/Desktop/TGYUK/mp/brig_3.mp3"
+        audio_path = "mp/brig.mp3"
+        audio_path_1 = "mp/brig_1.mp3"
+        audio_path_2 = "mp/brig_2.mp3"
+        audio_path_3 = "mp/brig_3.mp3"
         audio_files = [audio_path, audio_path_1, audio_path_2, audio_path_3]
         random_audio = random.choice(audio_files)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=text)
