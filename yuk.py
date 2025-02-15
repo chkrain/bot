@@ -46,7 +46,7 @@ bot = Bot(token=TOKEN)
 family_hashes = {}
 GUESS_GAMES = {}
 
-LAUGHTER = ['хахахахах', 'хыхахвхаувзхпамх', 'АХАХВХЖВЖХАЖХАВХВ', 'дзаЗДАЗДАЗВВ', 'ххАХПХПХ', 'АХАХАХВХАВХ', 'НЬЕХЕХЕХЕХЕХЕХ', 'ЛОЛ ЧЁ БЛЯЯ']
+LAUGHTER = ['хахахахах', 'хыхахвхаувзхпамх', 'АХАХВХЖВЖХАЖХАВХВ', 'дзаЗДАЗДАЗВВ', 'ххАХПХПХ', 'АХАХАХВХАВХ', 'НЬЕХЕХЕХЕХЕХЕХ', 'ЛОЛ ЧЁ БЛЯЯ', 'ХЪаХах, воспользуйся командой /help, хотя даже она вряд ли тебе поможет))))']
 
 PREDICTIONS = [
     "😄 Мои магические силы подсказывают мне, что в ближайшее время тебя ждет неожиданная встреча",
@@ -384,6 +384,7 @@ async def kick_from_family(update: Update, context: CallbackContext):
     user_data = load_user_data()
     
     if user_data.get(user_id, {}).get("role") not in ["администратор"] or \
+       user_data.get(user_id, {}).get("admin") not in ["true"] or \
        user_data.get(user_id, {}).get("family_role") != "Глава":
         await reply_and_delete(update, context, "❌ Только глава семьи или администратор может выгонять, ваще офигели?")
         return
@@ -520,7 +521,13 @@ async def set_family_title(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     user_data = load_user_data()
     
-    if user_data.get(user_id, {}).get("role") not in ["жулик", "стример", "администратор"]:
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
+    
+    
+    if user_role not in ["модератор", "администратор", "стример", "жулик"] and not is_admin:
         await reply_and_delete( update, context, "❌ Только обладатели роли жулик могут менять титул, накопи бабок")
         return
     
@@ -612,12 +619,16 @@ async def handle_action_response(update: Update, context: CallbackContext):
     
 async def mute_user(update: Update, context: CallbackContext):
     user_data = load_user_data()
-    moderator = update.message.from_user  # Получаем объект модератора
+
+    moderator = update.message.from_user
     moderator_id = str(moderator.id)
-    moderator_username = moderator.username or f"ID:{moderator_id}"  # На случай отсутствия username
+    moderator_username = user_data.get(moderator_id, {}).get("default_username")
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
+    
 
     # Проверка прав модератора
-    if user_data.get(moderator_id, {}).get("role") not in ["модератор", "администратор", "стример"]:
+    if user_role not in ["модератор", "администратор", "стример"] and not is_admin:
         await reply_and_delete(update, context, "❌ Только для модераторов и выше, не борзеть")
         return
 
@@ -806,19 +817,20 @@ def is_fibonacci(n):
     return b == n
 
 def get_user_status(level):
-    """Определяет статус игрока по уровню."""
-    if level < 3:
+    if level < 4:
         return "Новичок"
-    elif level < 7:
+    elif level < 8:
         return "Опытный"
     elif level < 12:
         return "Профессионал"
-    elif level < 20:
+    elif level < 16:
         return "Мастер"
-    else:
+    elif level < 20:
         return "Легенда"
-
-
+    elif level < 24:
+        return "Читер"
+    else:
+        return "Божество"
 
 # /buyrole 
 async def buy_role(update: Update, context: CallbackContext):
@@ -876,7 +888,13 @@ async def modify_family_points(update: Update, context: CallbackContext):
     
     user_data = load_user_data()
     
-    if user_data.get(admin_id, {}).get("role") != "администратор":
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
+    
+    
+    if user_role not in ["администратор", "стример"] and not is_admin:
         await reply_and_delete(update, context, "❌ Только администраторы могут изменять очки семьи.")
         return
     
@@ -1024,7 +1042,8 @@ async def join_family(update: Update, context: CallbackContext):
             "warnings": 0,
             "muted_until": None,
             "family_title": "Нет титула",
-            "default_username": user.username  # Сохраняем исходный username
+            "default_username": user.username,  # Сохраняем исходный username
+            "admin": False
         }
         save_user_data(user_data)
         await log_to_channel(f"✅ Добавлен новый пользователь (попытка вступления в семью) {user_id}")
@@ -1194,22 +1213,91 @@ def pluralize_points(n):
         return f"{n} очков"
 
 def igra(count: int) -> str:
-    if count == 1:
-        return "игра"
-    elif 2 <= count <= 4:
+    if 11 <= count % 100 <= 14:  
+        return "игр"
+    elif count % 10 == 1:  
         return "игры"
-    else:
+    elif 2 <= count % 10 <= 4: 
+        return "игр"
+    else:  
         return "игр"
 
 def pobeda(count: int) -> str:
-    if count == 1:
+    if 11 <= count % 100 <= 14:  
+        return "побед"
+    elif count % 10 == 1:  
         return "победа"
-    elif 2 <= count <= 4:
+    elif 2 <= count % 10 <= 4:  
         return "победы"
-    else:
+    else:  
         return "побед"
 
-    
+def get_background_image(level):
+    """Возвращает путь к фону в зависимости от уровня."""
+    if level < 4:
+        return "backgrounds/"
+    elif level < 8:
+        return "backgrounds/"
+    elif level < 12:
+        return "backgrounds/"
+    elif level < 16:
+        return "backgrounds/"
+    elif level < 20:
+        return "backgrounds/"
+    elif level < 24:
+        return "backgrounds/"
+    else:
+        return "backgrounds/"
+
+def get_level_emojis(points):
+    if points < 10:
+        return "🔹"
+    elif points < 50:
+        return "🔹🔹"
+    elif points < 100:
+        return "🔹🔹🔹"
+    elif points < 500:
+        return "💎"
+    elif points < 1000:
+        return "💎💎"
+    elif points < 3000:
+        return "💎💎💎"
+    elif points < 7000:
+        return "🥇"
+    elif points < 15000:
+        return "🥇🥇"
+    elif points < 50000:
+        return "🥇🥇🥇"
+    elif points < 100000:
+        return "👑"
+    elif points < 300000:
+        return "👑👑"
+    elif points < 500000:
+        return "👑👑👑"
+    elif points < 1000000:
+        return "🌟"
+    elif points < 12000000:
+        return "🌟🌟"
+    elif points < 15000000:
+        return "🌟🌟🌟"
+    elif points < 17000000:
+        return "💎🥇👑"
+    elif points < 20000000:
+        return "🥇👑🌟"
+    elif points < 35000000:
+        return "👑🌟👑"
+    elif points < 40000000:
+        return "🌟👑🌟"
+    elif points < 50000000:
+        return "🌟🌟👑🌟🌟"
+    else:
+        return "🌟🌟🌟🌟🌟"
+
+def calculate_offset(emojis_count):
+    base_offset = 525  # Базовый отступ (1 эмоджи)
+    step = 10  # Разница в отступе между эмодзи
+    return base_offset - (emojis_count - 1) * step
+
 # Карточка картинка /usercard
 async def user_card(update: Update, context: CallbackContext):
     user_data = load_user_data()
@@ -1226,8 +1314,8 @@ async def user_card(update: Update, context: CallbackContext):
     title = get_user_status(level)
     games = data.get("games", 0)
     wins = data.get("wins", 0)
-    role = data.get("role", "Нет")
-    family_title = data.get("family_title", "Нет")
+    role = data.get("role", "участник")
+    family_title = data.get("family_title", "подписчик")
 
     win_rate = round((wins / games * 100), 1) if games > 0 else 0
 
@@ -1242,27 +1330,44 @@ async def user_card(update: Update, context: CallbackContext):
     font = ImageFont.truetype("arial.ttf", 28)
     title_font = ImageFont.truetype("arial.ttf", 32)
     emoji_font = ImageFont.truetype("segoe.ttf", 28)
+    emoji_avatar_font = ImageFont.truetype("segoe.ttf", 16)
 
     # Получение аватарки пользователя
     user_photo = await update.message.from_user.get_profile_photos()
     if user_photo.total_count > 0:
         print("Фото пользователя получено.")
-        photo = user_photo.photos[-1][-1]
+        photo = user_photo.photos[0][-1]
         photo_file = await photo.get_file()
         photo_bytes = await photo_file.download_as_bytearray()
         avatar = Image.open(io.BytesIO(photo_bytes))
         avatar = avatar.resize((100, 100))  # Уменьшаем размер аватарки
-        img.paste(avatar, (490, 10))  # Вставка аватарки на картинку
+        
+        mask = Image.new('L', (100, 100), 0)
+        draw_mask = ImageDraw.Draw(mask)
+        draw_mask.ellipse((0, 0, 100, 100), fill=255)
+        avatar.putalpha(mask)
+
+        img.paste(avatar, (485, 5), mask)  # Вставка аватарки на картинку
     else:
         print("Фото пользователя не найдено. Использую default_avatar")
         avatar = Image.open("default_avatar.png")  # Убедись, что у тебя есть этот файл
         avatar = avatar.resize((100, 100))  # Размер аватарки
-        img.paste(avatar, (490, 10))
+        
+        mask = Image.new('L', (100, 100), 0)
+        draw_mask = ImageDraw.Draw(mask)
+        draw_mask.ellipse((0, 0, 100, 100), fill=255)
+        avatar.putalpha(mask)
+        
+        img.paste(avatar, (485, 5), mask)
 
+    point_emojis = get_level_emojis(points)
+    offset_x = calculate_offset(len(point_emojis))
+    draw.text((offset_x, 110), point_emojis, font=emoji_avatar_font, fill="black")
+    
     draw.text((10, 23), f"📜", font=emoji_font, fill="black")
     draw.text((10, 93), f"🦹", font=emoji_font, fill="black")
     draw.text((10, 133), f"👑", font=emoji_font, fill="black")
-    draw.text((10, 173), f"🔹", font=emoji_font, fill="black")
+    draw.text((10, 173), f"⚜️", font=emoji_font, fill="black")
     draw.text((10, 213), f"🏆", font=emoji_font, fill="black")
     draw.text((10, 253), f"🎲", font=emoji_font, fill="black")
     # Текстовая информация на картинке
@@ -1271,7 +1376,7 @@ async def user_card(update: Update, context: CallbackContext):
     draw.text((50, 130), f"Титулован как {family_title}", font=font, fill="black")
     draw.text((50, 170), f"Имеет {pluralize_points(points)}", font=font, fill="black")
     draw.text((50, 210), f"Уровень {level}: {title}", font=font, fill="black")
-    draw.text((50, 250), f"Сыграно {games} {igra(games)}, из них {wins} {pobeda(wins)} ({int(win_rate)}%)", font=font, fill="black")
+    draw.text((50, 250), f"Из {games} {igra(games)} {wins} {pobeda(wins)}, это {float(win_rate):.1f}%", font=font, fill="black")
 
     # Сохранение и отправка картинки
     bio = io.BytesIO()
@@ -1280,6 +1385,32 @@ async def user_card(update: Update, context: CallbackContext):
 
     # Отправка фото пользователю
     await update.message.reply_photo(photo=bio, caption="📊 Твоя статистика!")
+
+async def set_admin(update: Update, context: CallbackContext):
+    user_id = str(update.message.from_user.id)
+    user_data = load_user_data()
+
+    if user_data.get(user_id, {}).get("role") not in ["администратор", "стример"]:
+        await reply_and_delete(update, context, "❌ Только администраторы могут назначать других администраторов!")
+        return
+
+    if not context.args:
+        await reply_and_delete(update, context, "❌ Укажи ник пользователя.")
+        return
+
+    target_username = context.args[0].lstrip('@')
+    target_id = next((uid for uid, data in user_data.items() if data["username"] == target_username), None)
+
+    if not target_id:
+        await reply_and_delete(update, context, "❌ Пользователь не найден.")
+        return
+
+    user_data[target_id]["admin"] = True  
+
+    save_user_data(user_data)
+    await reply_and_delete(update, context, f"✅ Пользователь @{target_username} теперь администратор!")
+    await log_to_channel("INFO", f"{user_data[user_id]['username']} назначил @{target_username} администратором.")
+
 
 # Ежедневное начисление очков
 async def daily_points_task():
@@ -1541,15 +1672,17 @@ async def play_kazik(update: Update, context: CallbackContext):
 
 # 1. Команда /unmute (для модераторов+)
 async def unmute_user(update: Update, context: CallbackContext):
+    user_data = load_user_data()
     # Получаем данные модератора
     moderator = update.message.from_user
     moderator_id = str(moderator.id)
     moderator_username = moderator.username or f"ID:{moderator_id}"  # Актуальный username или ID
-
-    user_data = load_user_data()
+    
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
     
     # Проверка прав
-    if user_data.get(moderator_id, {}).get("role") not in ["модератор", "администратор", "стример"]:
+    if user_role not in ["модератор", "администратор", "стример"] and not is_admin:
         await reply_and_delete(update, context, "❌ Только для модераторов и выше!")
         return
     
@@ -1657,6 +1790,11 @@ async def points(update: Update, context: CallbackContext):
     user_data = load_user_data()
     requester_id = str(update.message.from_user.id)
     
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
+    
     # Просмотр своих очков
     if not context.args:
         points = user_data[requester_id].get("family_points", 0)
@@ -1664,7 +1802,7 @@ async def points(update: Update, context: CallbackContext):
         return
     
     # Просмотр чужих очков (только для модераторов+)
-    if user_data.get(requester_id, {}).get("role") not in ["модератор", "администратор", "стример"]:
+    if user_role not in ["модератор", "администратор", "стример"] and not is_admin:
         await reply_and_delete(update, context, "❌ Недостаточно прав!")
         return
     
@@ -1777,7 +1915,11 @@ async def yupointsinfo(update: Update, context: CallbackContext):  # Добав�
 # /moder
 async def moder(update: Update, context: CallbackContext):
     user_data = load_user_data()
-    requester_id = str(update.message.from_user.id)
+    
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
     
     # Если аргументов нет
     if not context.args:
@@ -1791,7 +1933,7 @@ async def moder(update: Update, context: CallbackContext):
         return
     
     # Проверка прав
-    if user_data.get(requester_id, {}).get("role") not in ["модератор", "администратор", "стример"]:
+    if user_role not in ["модератор", "администратор", "стример"] and not is_admin:
         await reply_and_delete(update, context, "❌ Недостаточно прав!")
         return
 
@@ -1801,8 +1943,13 @@ async def steal_points(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
     user_data = load_user_data()
     
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
+    
     # Проверка прав и ограничений
-    if user_data.get(user_id, {}).get("role") not in ["жулик", "стример", "администратор"]:
+    if user_role not in ["модератор", "администратор", "стример", "жулик"] and not is_admin:
         await reply_and_delete(update, context, "❌ Только жулики могут воровать очки, ты же не опустишься до такого?")
         return
     
@@ -1903,7 +2050,11 @@ async def brigada(update: Update, context: CallbackContext):
 # /жулик
 async def testrole(update: Update, context: CallbackContext):
     user_data = load_user_data()
-    requester_id = str(update.message.from_user.id)
+    
+    moderator = update.message.from_user
+    moderator_id = str(moderator.id)
+    user_role = user_data.get(moderator_id, {}).get("role")
+    is_admin = user_data.get(moderator_id, {}).get("admin", False)
     
     # Если аргументов нет
     if not context.args:
@@ -1918,8 +2069,8 @@ async def testrole(update: Update, context: CallbackContext):
         return
     
     # Проверка прав
-    if user_data.get(requester_id, {}).get("role") not in ["жулик", "администратор", "стример"]:
-        await reply_and_delete(update, context, "❌ Недостаточно прав, нужно быть жулик")
+    if user_role not in ["модератор", "администратор", "стример", "жулик"] and not is_admin:
+        await reply_and_delete(update, context, "❌ Недостаточно прав, нужно быть жуликом")
         return
     
 async def show_info(update: Update, context: CallbackContext):
@@ -2053,6 +2204,7 @@ async def run_bot():
     app.add_handler(CommandHandler("info", show_info))
     app.add_handler(CommandHandler("buytitle", buy_title))
     app.add_handler(CommandHandler("prediction", prediction))
+    app.add_handler(CommandHandler("setadm", set_admin))
     app.add_handler(CommandHandler("kazik", play_kazik))
     app.add_handler(CommandHandler("usercard", user_card))
     app.add_handler(CommandHandler("kazik_rules", kazik_rules))
