@@ -4,7 +4,7 @@
         "role": "администратор",
         "family": "Семья GroupAnonymousBot",
         "family_role": "Глава",
-        "family_points": 346.0,
+        "family_points": 816.0,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -15,7 +15,7 @@
         "role": "администратор",
         "family": "Семья главврач",
         "family_role": "lellele",
-        "family_points": 10000,
+        "family_points": 129752,
         "warnings": 0,
         "muted_until": null,
         "family_title": "шустрый джентельмен",
@@ -26,15 +26,21 @@
             "kiss": 0,
             "sex": 2
         },
-        "last_prediction": "2025-02-14T14:42:05.697520",
-        "last_guess_game": "2025-02-13T22:43:05.643942"
+        "last_prediction": "2025-02-15T09:22:38.859001",
+        "last_theft": "2025-02-15T10:49:24.560361",
+        "wins": 2,
+        "games": 4,
+        "level": 2,
+        "status": "Новичок",
+        "win_rate": 66.67,
+        "last_guess_game": "2025-02-15T12:43:44.199845"
     },
     "1649025293": {
         "username": "пипупиу",
         "role": "администратор",
         "family": "юпиё",
         "family_role": "Глава",
-        "family_points": 347.0,
+        "family_points": 827.0,
         "warnings": 1,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -42,10 +48,10 @@
     },
     "837800391": {
         "username": "главврач",
-        "role": "модератор",
+        "role": "жулик",
         "family": "Семья главврач",
         "family_role": "мама поля",
-        "family_points": 10000,
+        "family_points": 130352,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -53,12 +59,13 @@
         "last_guess_game": "2025-02-13T15:38:16.017448",
         "attempts": 1,
         "daily_actions": {
-            "last_reset": "2025-02-13T15:50:04.698587",
+            "last_reset": "2025-02-15T10:09:21.954472",
             "hug": 0,
             "kiss": 0,
             "sex": 0
         },
-        "last_prediction": "2025-02-14T14:27:31.429319"
+        "last_prediction": "2025-02-15T09:52:16.498128",
+        "last_theft": "2025-02-15T09:55:24.646934"
     },
     "6636046311": {
         "username": "g",
@@ -76,7 +83,7 @@
         "role": "администратор",
         "family": "Семья главврач",
         "family_role": "Участник",
-        "family_points": 10000,
+        "family_points": 130352,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -90,7 +97,7 @@
         "role": "участник",
         "family": "AQMS Famq",
         "family_role": "Глава",
-        "family_points": 347.0,
+        "family_points": 817.0,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -101,20 +108,20 @@
         "role": "участник",
         "family": "татаренки",
         "family_role": "Глава",
-        "family_points": 347.0,
+        "family_points": 627.0,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
         "default_username": "LaTTTim",
-        "last_guess_game": "2025-02-13T22:31:56.891942",
-        "attempts": 1
+        "last_guess_game": "2025-02-15T09:25:10.200543",
+        "last_prediction": "2025-02-15T10:50:52.431361"
     },
     "635660816": {
         "username": "laz_hel",
         "role": "стример",
         "family": "Семья главврач",
         "family_role": "Участник",
-        "family_points": 10000,
+        "family_points": 130352,
         "warnings": 1,
         "muted_until": null,
         "family_title": "Нет титула",
@@ -125,21 +132,27 @@
         "role": "участник",
         "family": "Семья главврач",
         "family_role": "Участник",
-        "family_points": 10000,
+        "family_points": 130352,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
-        "default_username": "roefj"
+        "default_username": "roefj",
+        "last_prediction": "2025-02-15T09:53:03.179128"
     },
     "1011512356": {
         "username": "Mifi_q",
         "role": "участник",
         "family": "Семья главврач",
         "family_role": "Участник",
-        "family_points": 10000,
+        "family_points": 130352,
         "warnings": 0,
         "muted_until": null,
         "family_title": "Нет титула",
         "default_username": "Mifi_q"
+    },
+    "1188837942": {
+        "username": "kik10cox",
+        "default_username": "kik10cox",
+        "role": "участник"
     }
 }

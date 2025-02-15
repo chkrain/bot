@@ -2,8 +2,11 @@ import logging
 import hashlib
 import asyncio
 import json
+import io  
+from io import BytesIO
 import os
 import random
+from PIL import Image, ImageDraw, ImageFont
 from urllib.request import Request
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, CallbackContext
@@ -19,8 +22,8 @@ from telegram.error import BadRequest, TelegramError
 # -----------------------------------------------------------------------------------------
 # -----------------------------------------------------------------------------------------
 
-NEW = 'Добавлено: GITHUB. Бот хостится через Git Hub Actions (не предназначено для хостинга ботов, поэтому может лагать)\nКаждые 5 минут может перезагружаться\nЕжедневные награды теперь раз в сутки. Количество начисляемых очков увеличено.'
-FIXED = 'Исправлено: Ручной запуск / запуск по пушу.'
+NEW = 'Добавлено: /kazik /kazik_rules /usercard'
+FIXED = 'Исправлено: reply_and_delete изменено на 30 секунд (удаление сообщений)'
 
 # -----------------------------------------------------------------------------------------
 # -----------------------------------------------------------------------------------------
@@ -227,7 +230,7 @@ async def prediction(update: Update, context: CallbackContext):
     )
 
 # удаление сообщений
-async def reply_and_delete(update: Update, context: CallbackContext, text: str, delete_after: int = 15, reply_markup=None, chat_id=None):
+async def reply_and_delete(update: Update, context: CallbackContext, text: str, delete_after: int = 30, reply_markup=None, chat_id=None):
     try:
         # Если chat_id передан, используем его, иначе используем chat_id из update
         if chat_id is None:
@@ -504,7 +507,7 @@ async def family_action(update: Update, context: CallbackContext):
         message = await context.bot.send_message(
             chat_id=chat_id,
             text=f"🎭 {user_data[user_id]['username']} хочет {ACTION_TYPES[action_type]} @{target_username}!\n"
-                 f"@{target_username}, чё думаешь:",
+                 f"@{target_username}, чё думаешь?",
             reply_markup=reply_markup
         )
         PENDING_ACTIONS[action_key]['message_id'] = message.message_id
@@ -743,6 +746,7 @@ async def handle_guess(update: Update, context: CallbackContext):
         del user_data[user_id]['attempts']
         
         if user_guess == random_number:
+            won = True
             family_name = user_data.get(user_id, {}).get('family')
             if family_name:
                 for uid in user_data:
@@ -752,8 +756,10 @@ async def handle_guess(update: Update, context: CallbackContext):
             else:
                 reply_text = f"✅ Поздравляю! Число {random_number} верное. Для бонуса вступите в семью"
         else:
+            won = False
             reply_text = f"❌ Неправильно! Верное число: {random_number}. Попробуй через час (/guess)"
         
+        await update_user_stats(user_data, user_id, won)
         save_user_data(user_data)  # Сохраняем после всех изменений
         await reply_and_delete(update, context, reply_text)
 
@@ -762,6 +768,57 @@ async def handle_guess(update: Update, context: CallbackContext):
         # Удаляем игру даже при ошибке ввода
         del user_data[user_id]['random_number']
         save_user_data(user_data)
+
+# Статус
+async def update_user_stats(user_data, user_id, won):
+    """Обновляет статистику пользователя в БД"""
+    user_data.setdefault(user_id, {}).setdefault("wins", 0)
+    user_data.setdefault(user_id, {}).setdefault("games", 0)
+    user_data.setdefault(user_id, {}).setdefault("level", 0)
+    user_data.setdefault(user_id, {}).setdefault("status", "Новичок")
+
+    # Обновляем общее число игр
+    user_data[user_id]["games"] += 1
+
+    if won:
+        user_data[user_id]["wins"] += 1
+
+        # Проверка на число Фибоначчи для повышения уровня
+        if is_fibonacci(user_data[user_id]["wins"]):
+            user_data[user_id]["level"] += 1
+
+        # Обновляем статус игрока
+        user_data[user_id]["status"] = get_user_status(user_data[user_id]["level"])
+
+    # Вычисляем win_rate
+        user_data[user_id]["win_rate"] = round((user_data[user_id]["wins"] / user_data[user_id]["games"]) * 100, 2)
+    
+    save_user_data(user_data)  # Сохраняем изменения
+
+
+def is_fibonacci(n):
+    """Проверяет, является ли число частью последовательности Фибоначчи"""
+    if n in {0, 1}:  # Числа 0 и 1 — часть последовательности
+        return True
+    a, b = 0, 1
+    while b < n:
+        a, b = b, a + b
+    return b == n
+
+def get_user_status(level):
+    """Определяет статус игрока по уровню."""
+    if level < 3:
+        return "Новичок"
+    elif level < 7:
+        return "Опытный"
+    elif level < 12:
+        return "Профессионал"
+    elif level < 20:
+        return "Мастер"
+    else:
+        return "Легенда"
+
+
 
 # /buyrole 
 async def buy_role(update: Update, context: CallbackContext):
@@ -1136,6 +1193,94 @@ def pluralize_points(n):
     else:  # Все остальные случаи (5-9, 0)
         return f"{n} очков"
 
+def igra(count: int) -> str:
+    if count == 1:
+        return "игра"
+    elif 2 <= count <= 4:
+        return "игры"
+    else:
+        return "игр"
+
+def pobeda(count: int) -> str:
+    if count == 1:
+        return "победа"
+    elif 2 <= count <= 4:
+        return "победы"
+    else:
+        return "побед"
+
+    
+# Карточка картинка /usercard
+async def user_card(update: Update, context: CallbackContext):
+    user_data = load_user_data()
+    target_id = str(update.message.from_user.id)
+
+    if target_id not in user_data:
+        await update.message.reply_text("❌ О тебе нет данных. Пропиши /start")
+        return
+
+    data = user_data[target_id]
+    username = user_data[target_id].get("username", "Крутышка")
+    points = data.get("family_points", 0)
+    level = data.get("level", 1)
+    title = get_user_status(level)
+    games = data.get("games", 0)
+    wins = data.get("wins", 0)
+    role = data.get("role", "Нет")
+    family_title = data.get("family_title", "Нет")
+
+    win_rate = round((wins / games * 100), 1) if games > 0 else 0
+
+    # Фон для изображения (градиент или текстура)
+    try:
+        base_img = Image.open("background_image.jpg")
+    except FileNotFoundError:
+        base_img = Image.new("RGB", (600, 300), (0, 0, 0))  # Черный фон по умолчанию
+    img = base_img.resize((600, 300))  # Подгоняем под нужный размер
+
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("arial.ttf", 28)
+    title_font = ImageFont.truetype("arial.ttf", 32)
+    emoji_font = ImageFont.truetype("segoe.ttf", 28)
+
+    # Получение аватарки пользователя
+    user_photo = await update.message.from_user.get_profile_photos()
+    if user_photo.total_count > 0:
+        print("Фото пользователя получено.")
+        photo = user_photo.photos[-1][-1]
+        photo_file = await photo.get_file()
+        photo_bytes = await photo_file.download_as_bytearray()
+        avatar = Image.open(io.BytesIO(photo_bytes))
+        avatar = avatar.resize((100, 100))  # Уменьшаем размер аватарки
+        img.paste(avatar, (490, 10))  # Вставка аватарки на картинку
+    else:
+        print("Фото пользователя не найдено. Использую default_avatar")
+        avatar = Image.open("default_avatar.png")  # Убедись, что у тебя есть этот файл
+        avatar = avatar.resize((100, 100))  # Размер аватарки
+        img.paste(avatar, (490, 10))
+
+    draw.text((10, 23), f"📜", font=emoji_font, fill="black")
+    draw.text((10, 93), f"🦹", font=emoji_font, fill="black")
+    draw.text((10, 133), f"👑", font=emoji_font, fill="black")
+    draw.text((10, 173), f"🔹", font=emoji_font, fill="black")
+    draw.text((10, 213), f"🏆", font=emoji_font, fill="black")
+    draw.text((10, 253), f"🎲", font=emoji_font, fill="black")
+    # Текстовая информация на картинке
+    draw.text((50, 20), f"Статистика {username}", font=title_font, fill="black")
+    draw.text((50, 90), f"Роль - {role}", font=font, fill="black")
+    draw.text((50, 130), f"Титулован как {family_title}", font=font, fill="black")
+    draw.text((50, 170), f"Имеет {pluralize_points(points)}", font=font, fill="black")
+    draw.text((50, 210), f"Уровень {level}: {title}", font=font, fill="black")
+    draw.text((50, 250), f"Сыграно {games} {igra(games)}, из них {wins} {pobeda(wins)} ({int(win_rate)}%)", font=font, fill="black")
+
+    # Сохранение и отправка картинки
+    bio = io.BytesIO()
+    img.save(bio, "PNG")
+    bio.seek(0)
+
+    # Отправка фото пользователю
+    await update.message.reply_photo(photo=bio, caption="📊 Твоя статистика!")
+
 # Ежедневное начисление очков
 async def daily_points_task():
     while True:
@@ -1233,7 +1378,166 @@ async def topfam(update: Update, context: CallbackContext):
 
     await reply_and_delete(update, context, text)
 
+
+# казик
+# Определение цветов для номеров рулетки
+RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
+BLACK_NUMBERS = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35}
+
+
+
+async def play_kazik(update: Update, context: CallbackContext):
+    user_id = str(update.message.from_user.id)
+    user_data = load_user_data()
     
+    if len(context.args) < 2:
+        await reply_and_delete(update, context, "❌ Команда выглядит так: /kazik [ставка] [тип_ставки] [число/цвет]")
+        return
+    
+    try:
+        bet_amount = int(context.args[0])
+        bet_type = context.args[1].upper()
+        bet_value = context.args[2] if len(context.args) > 2 else None
+    except ValueError:
+        await reply_and_delete(update, context, "❌ Неверный формат ставки. Пример: /kazik 100 A 7")
+        return
+    
+    if user_id not in user_data or user_data[user_id].get("family_points", 0) < bet_amount:
+        await reply_and_delete(update, context, f"❌ Недостаточно очков для ставки, {random.choice(LAUGHTER)}")
+        return
+    
+    # Выпадение случайного числа рулетки (0-36)
+    result_number = random.randint(0, 36)
+    result_color = "red" if result_number in RED_NUMBERS else "black" if result_number in BLACK_NUMBERS else "zero"
+    
+    # Таблица коэффициентов
+    payout_multipliers = {
+        "A": 35,  # Прямая ставка
+        "B": 17,  # Сплит
+        "C": 11,  # Стрит
+        "D": 8,   # Каре
+        "E": 5,   # Сикслайн
+        "F": 2,   # Ряд
+        "G": 2,   # Дюжина
+        "H": 1    # Четное/нечетное, красное/черное, больше/меньше
+    }
+    
+    if bet_type == "A":  # Прямая ставка
+        if bet_value is None or not bet_value.isdigit() or not (0 <= int(bet_value) <= 36):
+            await reply_and_delete(update, context, "❌ Неверная ставка. Пример: /kazik 100 A 7")
+            return
+        if int(bet_value) == result_number:
+            multiplier = payout_multipliers["A"]
+        else:
+            multiplier = 0
+    elif bet_type == "B":  # Сплит
+        if len(context.args) < 3:
+            await reply_and_delete(update, context, "❌ Для сплита нужно указать два числа. Пример: /kazik 100 B 1 2")
+            return
+        bet_values = [int(value) for value in context.args[2:]]
+        
+        if len(bet_values) != 2 or bet_values[0] < 0 or bet_values[0] > 36 or bet_values[1] < 0 or bet_values[1] > 36:
+            await reply_and_delete(update, context, "❌ Для сплита укажите два числа от 0 до 36.")
+            return
+        
+        adjacent_numbers = [
+            (1, 2), (2, 3), (4, 5), (5, 6), (7, 8), (8, 9), (10, 11), (11, 12),
+            (13, 14), (14, 15), (16, 17), (17, 18), (19, 20), (20, 21), (22, 23),
+            (23, 24), (25, 26), (26, 27), (28, 29), (29, 30), (31, 32), (32, 33), (34, 35), (35, 36)
+        ]
+        
+        if (bet_values[0], bet_values[1]) not in adjacent_numbers and (bet_values[1], bet_values[0]) not in adjacent_numbers:
+            await reply_and_delete(update, context, "❌ Числа для сплита должны быть соседними.")
+            return
+        
+        if result_number in bet_values:
+            multiplier = payout_multipliers["B"]
+        else:
+            multiplier = 0
+    elif bet_type == "C":  # Стрит
+        if len(context.args) < 3:
+            await reply_and_delete(update, context, "❌ Для стрита нужно указать три числа. Пример: /kazik 100 C 1 2 3")
+            return
+        bet_values = [int(value) for value in context.args[2:]]
+        
+        if len(bet_values) != 3 or any(value < 0 or value > 36 for value in bet_values):
+            await reply_and_delete(update, context, "❌ Для стрита укажите три числа от 0 до 36.")
+            return
+        
+        if result_number in bet_values:
+            multiplier = payout_multipliers["C"]
+        else:
+            multiplier = 0
+    elif bet_type == "D":  # Каре
+        if len(context.args) < 3:
+            await reply_and_delete(update, context, "❌ Для каре нужно указать четыре числа. Пример: /kazik 100 D 1 2 3 4")
+            return
+        bet_values = [int(value) for value in context.args[2:]]
+        
+        if len(bet_values) != 4 or any(value < 0 or value > 36 for value in bet_values):
+            await reply_and_delete(update, context, "❌ Для каре укажите четыре числа от 0 до 36.")
+            return
+        
+        if result_number in bet_values:
+            multiplier = payout_multipliers["D"]
+        else:
+            multiplier = 0
+    elif bet_type == "E":  # Сикслайн
+        if len(context.args) < 3:
+            await reply_and_delete(update, context, "❌ Для сикслайна нужно указать шесть чисел. Пример: /kazik 100 E 1 2 3 4 5 6")
+            return
+        bet_values = [int(value) for value in context.args[2:]]
+        
+        if len(bet_values) != 6 or any(value < 0 or value > 36 for value in bet_values):
+            await reply_and_delete(update, context, "❌ Для сикслайна укажите шесть чисел от 0 до 36.")
+            return
+        
+        if result_number in bet_values:
+            multiplier = payout_multipliers["E"]
+        else:
+            multiplier = 0
+    elif bet_type == "F":  # Ставка на ряд (колонку)
+        if bet_value not in ["1st", "2nd", "3rd"]:
+            await reply_and_delete(update, context, "❌ Неверная ставка. Доступные ряды: 1st, 2nd, 3rd")
+            return
+        
+        first_column = {1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34}
+        second_column = {2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35}
+        third_column = {3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36}
+        
+        if (bet_value == "1st" and result_number in first_column) or \
+           (bet_value == "2nd" and result_number in second_column) or \
+           (bet_value == "3rd" and result_number in third_column):
+            multiplier = payout_multipliers["F"]
+        else:
+            multiplier = 0
+    elif bet_type == "H":  # Ставки на цвета, чет/нечет, диапазоны
+        if bet_value not in ["red", "black", "even", "odd", "low", "high"]:
+            await reply_and_delete(update, context, "❌ Неверная ставка. Доступно: red, black, even, odd, low, high")
+            return
+        if (bet_value == result_color) or \
+           (bet_value == "even" and result_number % 2 == 0 and result_number != 0) or \
+           (bet_value == "odd" and result_number % 2 == 1) or \
+           (bet_value == "low" and 1 <= result_number <= 18) or \
+           (bet_value == "high" and 19 <= result_number <= 36):
+            multiplier = payout_multipliers["H"]
+        else:
+            multiplier = 0
+    else:
+        await reply_and_delete(update, context, "❌ Неверный тип ставки. Посмотри /kazik_rules")
+        return
+    
+    if multiplier > 0:
+        winnings = int(bet_amount * multiplier)
+        user_data[user_id]["family_points"] += winnings
+        won = True
+        await reply_and_delete(update, context, f"✅ Выпало {result_number} ({result_color})! Ты выиграл {pluralize_points(winnings)}!")
+    else:
+        user_data[user_id]["family_points"] -= bet_amount
+        won = False
+        await reply_and_delete(update, context, f"❌ Выпало {result_number} ({result_color}). Ты проиграл {pluralize_points(bet_amount)}, бывает")
+    
+    await update_user_stats(user_data, user_id, won)
 
 # 1. Команда /unmute (для модераторов+)
 async def unmute_user(update: Update, context: CallbackContext):
@@ -1374,6 +1678,84 @@ async def points(update: Update, context: CallbackContext):
     points = user_data[target_id]["family_points"]
     await reply_and_delete(update, context, f"🏅 Семейные очки {target_username}: {points}")
 
+# Правила казика
+async def kazik_rules(update: Update, context: CallbackContext):
+    text = (
+            """
+            ❗❗❗ Ставки и казино - плохо. Не играйте в подобное на настоящие деньги и не относитесь к этому как к способу заработка ❗❗❗ \n
+            ❗❗❗ Здесь вы можете почувствовать себя Джеймсом Бондом, но ни в коем случае не повторяйте это на сторонних сайтах ❗❗❗ \n
+            ❗❗❗ Если вы легко подсаживаетесь на азартные игры не стоит начинать даже тут. Команда создана исключительно для развлечения ❗❗❗ \n
+            
+            🎰 Правила игры в рулетку 🎰
+            
+            В рулетке можно делать следующие виды ставок:
+            
+            A — Прямая ставка (ставка на 1 номер) → 35 к 1
+            Пример: /kazik 100 A 7
+            Это самая высокооплачиваемая ставка. Вы ставите на один конкретный номер, и если этот номер выпадает, ваша ставка умножается на 35.
+            Круто? Это же как быстро можно накопить на вип? При стоимосте в 200К (стоимость может поменяться, если это так, сообщите через /report) 
+            достаточно поставить всего 5.7К!
+
+            B — Сплит (ставка на 2 номера) → 17 к 1
+            Пример: /kazik 100 B 7 8
+            Сплит — ставка на два соседних номера. Например, если ставите на номера 7 и 8, и любой из них выпадает, ваша ставка умножается на 17.
+            Неплохо, если любите рискнуть по-крупному!
+
+            C — Стрит (ставка на 3 номера) → 11 к 1
+            Пример: /kazik 100 C 7 8 9
+            Стрит — ставка на три последующих номера. Например, если ставите на номера 7, 8 и 9, и один из них выпадает, ваша ставка умножается на 11.
+            Тоже рисковая ставка, но окуп достаточно неплохой.
+
+            D — Каре (ставка на 4 номера) → 8 к 1
+            Пример: /kazik 100 D 7 8 10 11
+            Каре — ставка на четыре номера, расположенных рядом. Например, для номеров 7, 8, 10 и 11, если любой из этих номеров выпадает, ставка умножается на 8.
+            Уже менее рисковано и всё еще с большим коэффициентом. Попробуешь?
+
+            E — Сикслайн (ставка на 6 номеров) → 5 к 1
+            Пример: /kazik 100 E 7 8 9 10 11 12
+            Сикслайн — ставка на шесть номеров, которые идут подряд по горизонтали на поле. Например, ставите на 7, 8, 9, 10, 11 и 12, и если любой из этих номеров выпадает, 
+            ставка умножается на 5. Не выиграть здесь за несколько ставок - тяжело, а х5 коэффициент даёт возможность разгуляться.
+
+            F — Ставка на ряд (12 номеров) → 2 к 1
+            Пример: /kazik 100 F 1st
+            Ставка на ряд (или "столбец") включает 12 чисел. Например, ставка на первый ряд (1st) включает номера 1, 2, 3, ..., 12. В случае выигрыша выплата составит 2 к 1.
+            Здесь можно начинать ставить по-крупному!
+
+            G — Ставка на дюжину (12 номеров) → 2 к 1
+            Пример: /kazik 100 G 2nd
+            Дюжина — ставка на 12 номеров из одной группы: 1st (1-12), 2nd (13-24) или 3rd (25-36). Если выпадает один из номеров вашей дюжины, выплата составит 2 к 1.
+            Здесь можно начинать ставить по-крупному!
+            """
+    )
+            
+    text_2 = (
+            """
+            H — Ставки на равные шансы (красное/черное, четное/нечетное, больше/меньше) → 1 к 1
+            Пример: /kazik 100 H red
+            Доступные ставки:
+            - red (красное) — ставка на все красные номера (например, 1, 3, 5, 7, ...).
+            - black (черное) — ставка на все черные номера.
+            - even (четное) — ставка на все четные номера (2, 4, 6, ...).
+            - odd (нечетное) — ставка на все нечетные номера (1, 3, 5, ...).
+            - low (меньше) — ставка на числа от 1 до 18.
+            - high (больше) — ставка на числа от 19 до 36.
+            Если выпадет один из выбранных вами номеров для этих ставок, выплата составит 1 к 1.
+            Вот тут можно поставить все свои очки! А что? Один раз живём.
+            
+            ❗ При выпадении 0 все ставки, кроме A, проигрывают.
+            
+            Even (четное) — ставка выигрывает, если выпадает любое четное число (2, 4, 6, ..., 36). Исключение: 0 — ставка проигрывает.
+            Odd (нечетное) — ставка выигрывает, если выпадает любое нечетное число (1, 3, 5, ..., 35). Исключение: 0 — ставка проигрывает.
+            Low (1-18, меньше) — ставка выигрывает, если выпадает число от 1 до 18 включительно. Исключение: 0 — ставка проигрывает.
+            High (19-36, больше) — ставка выигрывает, если выпадает число от 19 до 36 включительно. Исключение: 0 — ставка проигрывает.
+            Эти ставки относятся к ставкам на равные шансы (H), выплата составляет 1 к 1.
+            """
+    )
+    await reply_and_delete(update, context, text)
+    await reply_and_delete(update, context, text_2)
+
+    
+    
 # /yupointsinfo
 async def yupointsinfo(update: Update, context: CallbackContext):  # Добавлен context
     text = (
@@ -1589,6 +1971,9 @@ async def show_help(update: Update, context: CallbackContext):
     /info - Запросить информацию
     /prediction - Магическое предсказание
     /guess - Шанс выиграть 10 000 очков!
+    /kazik - Казино (асу)
+    /kazik_rules - Правила игры в /kazik
+    /usercard - Посмотреть статистику (победы считаются в /kazik и /guess)
     """
     await reply_and_delete(update, context, help_text)
 
@@ -1668,6 +2053,9 @@ async def run_bot():
     app.add_handler(CommandHandler("info", show_info))
     app.add_handler(CommandHandler("buytitle", buy_title))
     app.add_handler(CommandHandler("prediction", prediction))
+    app.add_handler(CommandHandler("kazik", play_kazik))
+    app.add_handler(CommandHandler("usercard", user_card))
+    app.add_handler(CommandHandler("kazik_rules", kazik_rules))
     app.add_handler(CallbackQueryHandler(handle_join_request, pattern="^(accept_join|reject_join)_"))
     app.add_handler(CallbackQueryHandler(handle_action_response))
     
