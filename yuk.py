@@ -1327,8 +1327,8 @@ async def user_card(update: Update, context: CallbackContext):
     img = base_img.resize((600, 300))  # Подгоняем под нужный размер
 
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("arial.ttf", 28)
-    title_font = ImageFont.truetype("arial.ttf", 32)
+    font = ImageFont.truetype("DejaVuSans.ttf.ttf", 28)
+    title_font = ImageFont.truetype("DejaVuSans.ttf.ttf", 32)
     emoji_font = ImageFont.truetype("segoe.ttf", 28)
     emoji_avatar_font = ImageFont.truetype("segoe.ttf", 16)
 
