@@ -2,3 +2,4 @@ python-telegram-bot
 flask
 aiohttp
 nest_asyncio
+pillow
