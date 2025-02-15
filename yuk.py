@@ -1515,7 +1515,11 @@ async def topfam(update: Update, context: CallbackContext):
 RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
 BLACK_NUMBERS = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35}
 
-
+weights = {
+    "red": 55,   
+    "black": 40, 
+    "zero": 5  
+}
 
 async def play_kazik(update: Update, context: CallbackContext):
     user_id = str(update.message.from_user.id)
@@ -1538,8 +1542,14 @@ async def play_kazik(update: Update, context: CallbackContext):
         return
     
     # Выпадение случайного числа рулетки (0-36)
-    result_number = random.randint(0, 36)
-    result_color = "red" if result_number in RED_NUMBERS else "black" if result_number in BLACK_NUMBERS else "zero"
+    # result_number = random.randint(0, 36)
+    result_color = random.choices(["red", "black", "zero"], weights=[weights["red"], weights["black"], weights["zero"]])[0]
+    if result_color == "red":
+        result_number = random.choice(list(RED_NUMBERS))
+    elif result_color == "black":
+        result_number = random.choice(list(BLACK_NUMBERS))
+    else:
+        result_number = 0
     
     # Таблица коэффициентов
     payout_multipliers = {
