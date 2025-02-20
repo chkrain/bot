@@ -26,6 +26,7 @@ from anime import ANIME
 from bs4 import BeautifulSoup
 from new import NEW, FIXED
 from any import LOG_CHANNEL, MAIN_CHANNEL, USER_DATA_FILE, REPORTS_FILE, ACTION_TYPES
+import shutil
 
 
 TOKEN = os.getenv("TOKEN")
@@ -63,6 +64,12 @@ def badStat():
 
 PENDING_ACTIONS = {}
 PENDING_REQUESTS = {} 
+
+def backup_user_data():
+    try:
+        shutil.copy(USER_DATA_FILE, f"{USER_DATA_FILE}.bak")
+    except Exception as e:
+        logger.error(f"Ошибка создания резервной копии: {e}")
 
 def load_user_data():
     default_data = {
@@ -111,8 +118,14 @@ async def welcome_new_member(update: Update, context: CallbackContext):
                     await reply_and_delete(update, context, welcome_text, delete_after=120)
 
 def save_user_data(data):
-    with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    try:
+        temp_file = f"{USER_DATA_FILE}.tmp"
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        os.replace(temp_file, USER_DATA_FILE)  # Безопасное обновление
+    except Exception as e:
+        logger.error(f"Ошибка сохранения данных: {e}")
+
 
 async def log_to_channel(level, message):
     try:
@@ -1327,7 +1340,7 @@ def get_background_image(level):
     elif level < 16:
         return "image/f_4.png"
     elif level < 20:
-        return "image/background_image.jpg"
+        return "image/image/f_4_5.png"
     elif level < 24:
         return "image/f_5.png"
     else:
@@ -1553,17 +1566,20 @@ async def faminfo(update: Update, context: CallbackContext):
     
     family_name = user_data[user_id]["family"]
     members = [
-        f"• {data['username']} ({data['family_role']})" 
+        f"• {data['username']} с ролью {data.get('family_role', 'Содержанка')} — {pluralize_points(data.get('family_points', 0))}"
         for uid, data in user_data.items() 
         if data.get("family") == family_name
     ]
     
+    total_points = sum(data.get("family_points", 0) for data in user_data.values() if data.get("family") == family_name)
+
     text = (
-        f"👨👩👧👦 Семья: {family_name}\n"
-        f"🏆 Очки: {int(user_data[user_id]['family_points'])}\n"
-        f"👥 Участники ({len(members)}):\n" + "\n".join(members)
+        f"{random.choice(EMOJI)} Семья: {family_name}\n"
+        f"{random.choice(EMOJI)} Общие очки семьи: {pluralize_points(total_points)}\n"
+        f"{random.choice(EMOJI)} Участники ({len(members)}):\n" + "\n".join(members)
     )
     await reply_and_delete(update, context, text)
+
 
 # 2. /topfam
 async def topfam(update: Update, context: CallbackContext):
@@ -1587,12 +1603,23 @@ async def topfam(update: Update, context: CallbackContext):
         return
 
     sorted_families = sorted(families.items(), key=lambda x: x[1], reverse=True)
-    text = "🏆 Топ семей:\n" + "\n".join(
-        [f"{i+1}. {name} — {pluralize_points(int(points / len(members)))}" for i, (name, points) in enumerate(sorted_families)]
-    )
+    text = "🏆 Топ семей:\n" + "\n".join([
+        f"{i+1}. {name} — {pluralize_points(points)} {random.choice(EMOJI)}"
+        for i, (name, points) in enumerate(sorted_families)
+    ])
+
 
     await reply_and_delete(update, context, text)
 
+def ych(n):
+    if 11 <= n % 100 <= 19:  # Обрабатываем исключения (11-19 всегда "очков")
+        return f"{n} участников"
+    elif n % 10 == 1:  # Оканчивается на 1 (кроме 11)
+        return f"{n} участника"
+    elif 2 <= n % 10 <= 4:  # Оканчивается на 2, 3, 4 (кроме 12-14)
+        return f"{n} участников"
+    else:  # Все остальные случаи (5-9, 0)
+        return f"{n} участников"
 
 # казик
 # Определение цветов для номеров рулетки
@@ -1831,15 +1858,12 @@ async def user_info(update: Update, context: CallbackContext):
     # Формируем текст с информацией о пользователе
     text = (
         f"👤 Пользователь: @{data['username']}\n"
-        f"🆔 ID: скрыт\n"
         f"👑 Роль: {data['role']}\n"
         f"⚠️ Предупреждения: {data['warnings']}\n"
-        f"🔇 В муте: {muted_status}\n"
         f"👪 Семья: {data.get('family', 'Нет')}\n"
-        f"🏷️ Роль в семье: {data.get('family_role', 'Нет')}\n"
         f"🏅 Очки: {int(data.get('family_points', 0))}\n"
         f"👳 Титул: {data.get('family_title', 'Нет титула')}\n"
-        f"👀 Имя при рождении: {data.get('default_username', 'Нет его')}\n"
+        f"👀 Игр: {data.get('games', '0')}, побед в них: {data.get('wins', 0)}\n"
     )
     
     # Отправка ответа всегда в текущий чат
