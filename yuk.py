@@ -9,7 +9,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 from urllib.request import Request
 from telegram import Bot, Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext,  ChatMemberHandler
 from datetime import datetime, timedelta
 from telegram.ext import MessageHandler, filters, ContextTypes
 from collections import defaultdict
@@ -17,93 +17,52 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 from telegram.constants import ParseMode
 from telegram.error import BadRequest, TelegramError
+from predictions import PREDICTIONS
+from laugher import LAUGHTER
+from salam import RANDOM_SALAM, RANDOM_KY, EMOJI
+import requests
+import time
+from anime import ANIME
+from bs4 import BeautifulSoup
+from new import NEW, FIXED
+from any import LOG_CHANNEL, MAIN_CHANNEL, USER_DATA_FILE, REPORTS_FILE, ACTION_TYPES
 
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-
-NEW = 'Добавлено: /kazik /kazik_rules /usercard'
-FIXED = 'Исправлено: reply_and_delete изменено на 30 секунд (удаление сообщений)'
-
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
-# -----------------------------------------------------------------------------------------
 
 TOKEN = os.getenv("TOKEN")
+bot = Bot(token=TOKEN)
 
-LOG_CHANNEL = "-1002470364095"
+def token():
+    if TOKEN is None:
+        return "Токен не найден"
+    else: 
+        return "Токен на месте"
+    
 
 lock = asyncio.Lock()
-
-USER_DATA_FILE = "users_data.json"
-REPORTS_FILE = "reports.json"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=TOKEN)
-
 family_hashes = {}
 GUESS_GAMES = {}
 
-LAUGHTER = ['хахахахах', 'хыхахвхаувзхпамх', 'АХАХВХЖВЖХАЖХАВХВ', 'дзаЗДАЗДАЗВВ', 'ххАХПХПХ', 'АХАХАХВХАВХ', 'НЬЕХЕХЕХЕХЕХЕХ', 'ЛОЛ ЧЁ БЛЯЯ', 'ХЪаХах, воспользуйся командой /help, хотя даже она вряд ли тебе поможет))))']
-
-PREDICTIONS = [
-    "😄 Мои магические силы подсказывают мне, что в ближайшее время тебя ждет неожиданная встреча",
-    "😁 Верь в себя, и всё получится! Это не мои слова, это духи подсказали мне",
-    "😖 Остерегайся красных носков после заката, жуть какая..",
-    "🙌 Твоя мечта сбудется, когда ты поможешь другу",
-    "💲 Финансовая удача на твоей стороне! Возможно, стоит подождать",
-    "🍺 Сегодня лучше остаться дома и пить чай. А может и не чай",
-    "😈 Прочитай статьи про выживание в пост-апокалипсис",
-    "😴 Тебе лучше отдохнуть денёк-другой, перетруждаться плохо",
-    "😑 Пора взяться за изучение квантовой физики",
-    "😟 Ты всё еще помнишь таблицу умножения? Забудь..",
-    "😵 Думаю, книги по финансовой грамотносте тебе пригодятся",
-    "😴 Звёзды подсказывают мне, что тебе нужно больше спать",
-    "😤 Пора перестать лениться",
-    "👻 Возьмись за новое дело, время идёт",
-    "😒 Это сообщение удалится через [float('inf')] секунд, если всё пойдет как надо",
-    "♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ Ты думаешь, я смогу решить твои проблемы?",
-    "🌷 Не переставай мечтать",
-    "😁 Чаще дари улыбку людям",
-    "👴 👵 Скажи что-нибудь доброе своим родным",
-    "😟 Не кажется ли тебе, что уже слишком поздно?",
-    "😱 По-моему, твои часы спешат",
-    "😥 Да, в тот раз надо было сказать по-другому",
-    "😈 Терпи, потому что Господь с тобой ещё не закончил",
-    "🗿 😤 Больше свежего воздуха",
-    "🙏 Меньше негативных мыслей",
-    "🚴 Больше активного отдыха",
-    "☕ Не стоит употреблять алкоголь",
-    "⛔ Не надевай дырявые носки послезавтра",
-    "🚷 Будь внимательнее в четверг на улице",
-    "🐗 Отдай деньги кабану",
-    "😁 Молись, падла (сообщение не несёт негативный характер и лишь передаёт настроение звёзд на данный момент, все вопросы к ним)",
-    "😜 Если хочешь что-то выкинуть, но жалко - выкинь",
-    "😳 Venom",
-    "😍 I'm Slim Shady, yes, I'm the real Shady",
-    "😑 Долго будешь в телефоне сидеть?",
-    "😱 Ты можешь решить чью-то судьбу. Напечатай /report [текст] и предложи своё предсказание! Вдруг звёзды с ним согласятся?",
-    "😠 Не подходи к странным личностям, особенно ночью",
-    "💬 Неприятно, когда попадается гнилая фисташка. К чему это? На этой неделе остерегайся фисташек",
-    "💎 Сегодня ты можешь добиться успеха! А можешь и не добиться",
-    "🐔 Тебе станет казаться, что жизнь напоминает бесконечный день сурка. Это не так. Она напоминает день петуха",
-    "👍 Делая важный выбор сегодня, помни: лучше синица в руках, чем хуй в жопе",
-    "💅 Во всём знай меру: если не справляешься с задачей самостоятельно, не стесняйся забить на неё хуй",
-    "👤 Сегодня ты пойдёшь ва-банк! Или на хуй. Будущее пока неизвестно",
-    "👨 Возможно, сегодня ты узнаешь что-то новое про себя. Вряд ли это будет что-то хорошее"
-]
+def badStat():
+    try:
+        response = requests.get(f'https://api.telegram.org/bot{TOKEN}/getMe')
+        response.raise_for_status()  
+        return "Ошибок нет"
+    except requests.exceptions.HTTPError as http_err:
+        if http_err.response.status_code == 502:
+            return "Ошибка 502: Bad Gateway"
+        elif http_err.response.status_code == 504:
+            return "Ошибка 504: Gateway Timeout" 
+        else:
+            return f"HTTP ошибка: {http_err}"
+    except Exception as err:
+        return f"Произошла ошибка: {err}"
 
 PENDING_ACTIONS = {}
 PENDING_REQUESTS = {} 
-ACTION_TYPES = {
-    'kiss': '💋 Поцеловать',
-    'hug': '🤗 Обнять',
-    'slap': '👋 Дать пощечину',
-    'sex': '💕 Секс',
-    'highfive': '🖐️ Дать пять'
-}
 
 def load_user_data():
     default_data = {
@@ -114,8 +73,7 @@ def load_user_data():
         "family_points": 0,
         "warnings": 0,
         "muted_until": None,
-        "family_title": "Нет титула",
-        "default_username": 'None'
+        "family_title": "Нет титула"
     }
 
     try:
@@ -144,6 +102,13 @@ def load_user_data():
         logger.error(f"❌ Ошибка JSON в {USER_DATA_FILE}: {e}")
         return {}
 
+# Функция для отправки приветственного сообщения
+async def welcome_new_member(update: Update, context: CallbackContext):
+    if update.chat_member.new_chat_members:
+            for member in update.chat_member.new_chat_members:
+                if update.chat_member.chat.username == MAIN_CHANNEL or str(update.chat_member.chat.id) == MAIN_CHANNEL:
+                    welcome_text = f"{random.choice(RANDOM_SALAM)} {member.full_name}, {random.choice(RANDOM_KY)}!"
+                    await reply_and_delete(update, context, welcome_text, delete_after=120)
 
 def save_user_data(data):
     with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
@@ -199,35 +164,107 @@ async def buy_title(update: Update, context: CallbackContext):
     # Сохраняем обновленные данные
     save_user_data(user_data)
 
-    await reply_and_delete(update, context, f"✅ Вы купили должность '{title_name}'. Информация отправлена в канал администрации.")
+    await reply_and_delete(update, context, f"✅ Ты купил должность '{title_name}'. Информация отправлена в канал администрации.")
+
+# добавление всех
+async def check_new_users(update: Update, context: CallbackContext):
+    """Проверяет, есть ли пользователь в базе, если нет — добавляет."""
+    user = update.message.from_user
+    user_id = str(user.id)
+    user_data = load_user_data()
+
+    if user_id not in user_data:
+        user_data[user_id] = {
+            "username": user.username,
+            "default_username": user.username,
+            "role": "участник",
+            "family": None,
+            "family_role": None,
+            "family_points": 0,
+            "warnings": 0,
+            "muted_until": None,
+            "family_title": "Нет титула",
+            "admin": False
+        }
+        save_user_data(user_data)
+
+        # Логируем добавление нового пользователя
+        await log_to_channel("INFO", f"✅ Новый пользователь {user.username} (ID: {user_id}) добавлен в базу.")
+
+def get_prediction_count_declension(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return f"{count} раз"
+    elif 2 <= count % 10 <= 4 and not (11 <= count % 100 <= 14):
+        return f"{count} раза"
+    else:
+        return f"{count} раз"
 
 # магическое предсказание
 async def prediction(update: Update, context: CallbackContext):
+    current_time = time.time()
     user_id = str(update.message.from_user.id)
-    user_data = load_user_data()
-    
-    last_prediction = user_data.get(user_id, {}).get("last_prediction")
-    if last_prediction:
-        last_time = datetime.fromisoformat(last_prediction)
-        if (datetime.now() - last_time).seconds < 3600:
-            await context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text="❌ Магия устала :(\nПредсказания доступны раз в сутки\n(сокращено до одного раза в час)\n/prediction"
-            )
-            return
-    
-    # Получаем username из объекта update
     username = update.message.from_user.username or "хорошего человека"
-    
+
+    # Гарантируем, что пользователь существует в базе
+    user_data = ensure_user_exists(user_id, username)
+
+    # Проверяем наличие ключей в user_data
+    if "last_prediction_time" not in user_data[user_id]:
+        user_data[user_id]["last_prediction_time"] = 0
+        user_data[user_id]["prediction_count"] = 1  
+
+    last_prediction_time = user_data[user_id]["last_prediction_time"]
+    time_diff = current_time - last_prediction_time
+
+    # Если прошло более часа, сбрасываем множитель
+    if time_diff > 3600:
+        user_data[user_id]["prediction_count"] = 1
+    else:
+        user_data[user_id]["prediction_count"] += 1
+
+    # Расчет стоимости предсказания
+    points_to_deduct = 100 + (user_data[user_id]["prediction_count"] - 1) * 5000
+
+    # Проверяем баланс пользователя
+    current_balance = user_data[user_id]["family_points"]
+    if current_balance < points_to_deduct:
+        await reply_and_delete(
+            update, context,
+            chat_id=update.message.chat_id,
+            text=f"❌ У тебя недостаточно баллов для предсказания, нужно {points_to_deduct}, так как команда была использована {get_prediction_count_declension(user_data[user_id]['prediction_count'])} за последний час (каждое последующее использование умножается на 10, если использовать чаще, чем раз в час.)"
+        )
+        return
+
+    # Списываем баллы и обновляем время последнего использования
+    user_data[user_id]["family_points"] -= points_to_deduct
+    user_data[user_id]["last_prediction_time"] = current_time
+
+    save_user_data(user_data)
+
     # Выбираем случайное предсказание
     prediction_text = random.choice(PREDICTIONS)
-    user_data.setdefault(user_id, {})["last_prediction"] = datetime.now().isoformat()
-    save_user_data(user_data)
-    
+
+    # Отправляем предсказание
     await context.bot.send_message(
         chat_id=update.message.chat_id,
-        text=f"🔮 Магическое предсказание для {username}:\n\n{prediction_text}"
+        text=f"🔮 Магическое предсказание для {username}:\n\n{prediction_text}\n\n/prediction"
     )
+
+    # Информируем пользователя о снятии баллов
+    balance_message = reply_and_delete(
+        update, context,
+        chat_id=update.message.chat_id,
+        text=f"💰 С твоего баланса было снято {points_to_deduct} юпоинтов. Удачи!"
+    )
+
+    # Если множитель был сброшен, уведомляем пользователя
+    if time_diff > 3600:
+        await reply_and_delete(
+            update, context,
+            chat_id=update.message.chat_id,
+            text="⏳ Время сброшено! Следующее предсказание снова будет стоить 100 юпоинтов."
+        )
+
 
 # удаление сообщений
 async def reply_and_delete(update: Update, context: CallbackContext, text: str, delete_after: int = 30, reply_markup=None, chat_id=None):
@@ -247,7 +284,7 @@ async def reply_and_delete(update: Update, context: CallbackContext, text: str, 
         logger.error(f"Ошибка при отправке сообщения: {e}")
 
 
-
+# Удаление команды
 async def delete_user_command(update: Update, context: CallbackContext):
     """Удаляет команду пользователя через 5 секунд"""
     logger.debug(f"⏳ Получена команда: {update.message.text}")
@@ -273,6 +310,34 @@ async def delete_message_later(message, delay):
     except Exception as e:
         logger.error(f"Ошибка удаления сообщения: {e}")
 
+
+# Проверка на БДшность
+def ensure_user_exists(user_id, username):
+    """Проверяет, есть ли пользователь в базе, и добавляет его, если нет."""
+    user_data = load_user_data()
+    
+    if user_id not in user_data:
+        user_data[user_id] = {
+            "username": username,
+            "default_username": username,
+            "role": "участник",
+            "family": None,
+            "family_role": None,
+            "family_points": 1000,
+            "warnings": 0,
+            "muted_until": None,
+            "family_title": "Нет титула",
+            "admin": False,
+            "prediction_count": 1, 
+            "last_prediction_time": 0
+        }
+        save_user_data(user_data) 
+        return user_data  
+
+    return user_data 
+
+
+# /start
 async def start(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_data = load_user_data()
@@ -282,7 +347,13 @@ async def start(update: Update, context: CallbackContext):
         user_data[user_id] = {
             "username": user.username,
             "default_username": user.username,
-            "role": "участник"
+            "role": "участник",
+            "family": None,
+            "family_role": None,
+            "family_points": 0,
+            "warnings": 0,
+            "muted_until": None,
+            "family_title": "Нет титула"
         }
         save_user_data(user_data)
         await reply_and_delete(update, context, f"Привет, {user.username}! Добавила тебя в базу с ролью 'участник'.")
@@ -292,16 +363,11 @@ async def start(update: Update, context: CallbackContext):
 
 async def role(update: Update, context: CallbackContext):
     user = update.message.from_user
-    user_id = str(user.id)
-    user_data = load_user_data()
+    user_id = str(update.message.from_user.id)
+    username = update.message.from_user.username
 
-    if user_id not in user_data:
-        user_data[user_id] = {
-            "username": user.username,
-            "default_username": user.username,
-            "role": "участник"
-        }
-        save_user_data(user_data)
+    if user not in user_data:
+        user_data = ensure_user_exists(user_id, username)
         await reply_and_delete(update, context, "Добавила тебя в базу с ролью 'участник'.")
         await log_to_channel("INFO", f"{user.username} добавлен в базу с ролью участник по запросу /role")
     else:
@@ -312,21 +378,11 @@ async def role(update: Update, context: CallbackContext):
 # Команда /username
 async def set_username(update: Update, context: CallbackContext):
     user = update.message.from_user
-    user_id = str(user.id)
+    user_id = str(update.message.from_user.id)
+    username = update.message.from_user.username
     new_username = " ".join(context.args) if context.args else user.username
     
-    user_data = load_user_data()
-    
-    if user_id not in user_data:
-        user_data[user_id] = {
-            "username": user.username,         
-            "default_username": user.username,  
-            "role": "участник",                 
-            "warnings": 0,                      
-            "family": None,                     
-            "family_role": None,                
-        }
-    
+    user_data = ensure_user_exists(user_id, username)
     user_data[user_id]["username"] = new_username
     save_user_data(user_data)
     
@@ -454,8 +510,14 @@ async def family_action(update: Update, context: CallbackContext):
         await reply_and_delete(update, context, f"Используй: /{action_type} @username")
         return
 
-    target_username = context.args[0].lstrip('@')
-    target_id = next((uid for uid, data in user_data.items() if data.get("username") == target_username), None)
+    target_username = context.args[0]
+    if target_username.startswith('@'):
+        target_username = target_username.lstrip('@')  
+    else:
+        target_username = '@' + target_username  
+
+    target_id = next((uid for uid, data in user_data.items() if data.get("default_username") == target_username), None)
+
 
     # Проверки
     if not target_id:
@@ -528,7 +590,7 @@ async def set_family_title(update: Update, context: CallbackContext):
     
     
     if user_role not in ["модератор", "администратор", "стример", "жулик"] and not is_admin:
-        await reply_and_delete( update, context, "❌ Только обладатели роли жулик могут менять титул, накопи бабок")
+        await reply_and_delete( update, context, "❌ Только обладатели роли жулик могут менять титул, накопи бабок и купи)")
         return
     
     if not context.args:
@@ -686,10 +748,19 @@ async def safe_reply(update: Update, context: CallbackContext, text: str, is_mod
         if update.message.chat.type != "private":
             await reply_and_delete(update, context, "⚠️ Личка закрыта")
 
+# ANIME АНИМЕ
+async def send_random_anime(update, context):
+    username = update.message.from_user.username  
+    anime_name, anime_data = random.choice(list(ANIME.items()))
+    emoji = random.choice(EMOJI)
+    text = f"{emoji} {username}, посмотри {anime_name}\n\n🔗 Это можно сделать тут: {anime_data['url']}"
 
-from datetime import datetime, timedelta
-import random
-import json
+    await context.bot.send_photo(
+        chat_id=update.message.chat_id,
+        photo=anime_data["image"],
+        caption=text
+    )
+    
 
 def load_user_data():
     try:
@@ -851,16 +922,16 @@ async def buy_role(update: Update, context: CallbackContext):
 
     # Проверяем, какую роль хочет купить пользователь
     if role_to_buy == "жулик":
-        cost = 10000
+        cost = 100000
         new_role = "жулик"
     elif role_to_buy == "защитник":
-        cost = 100
+        cost = 1000
         new_role = "защитник"
     elif role_to_buy == "вип":
-        cost = 200000
+        cost = 20000000
         new_role = "вип"
     else:
-        await reply_and_delete(update, context, "❌ Доступные роли для покупки: 'жулик' (10 000 очков семьи), 'защитник' (100 очков семьи), 'вип' (200 000 очков семьи).")
+        await reply_and_delete(update, context, "❌ Доступные роли для покупки: 'жулик' (100 000 очков семьи), 'защитник' (1000 очков семьи), 'вип' (2 000 000 очков семьи).")
         return
 
     # Проверяем, хватает ли очков семьи
@@ -1171,12 +1242,25 @@ async def leave_family(update: Update, context: CallbackContext):
     if not user_data[user_id].get("family"):
         await reply_and_delete(update, context, "❌ Нет у тебя семьи, а часики-то тикают")
         return
+
+    family_name = user_data[user_id]["family"]
     
+    # Удаляем пользователя из семьи
     user_data[user_id]["family"] = None
     user_data[user_id]["family_role"] = None
+    
+    # Проверяем, остался ли кто-то в семье
+    family_members = [uid for uid, data in user_data.items() if data.get("family") == family_name]
+    
+    if not family_members:  # Если в семье никого не осталось
+        # Удаляем всю информацию о семье (если она хранится отдельно)
+        if "families" in user_data and family_name in user_data["families"]:
+            del user_data["families"][family_name]
+
     save_user_data(user_data)
     
     await reply_and_delete(update, context, "✅ Ты больше не принадлежишь семье, че теперь по 👄 клубам 👄 ?)")
+
 
 async def set_family_role(update: Update, context: CallbackContext):
     if not context.args:
@@ -1235,19 +1319,19 @@ def pobeda(count: int) -> str:
 def get_background_image(level):
     """Возвращает путь к фону в зависимости от уровня."""
     if level < 4:
-        return "backgrounds/"
+        return "image/f_1.png"
     elif level < 8:
-        return "backgrounds/"
+        return "image/f_2.png"
     elif level < 12:
-        return "backgrounds/"
+        return "image/f_3.png"
     elif level < 16:
-        return "backgrounds/"
+        return "image/f_4.png"
     elif level < 20:
-        return "backgrounds/"
+        return "image/background_image.jpg"
     elif level < 24:
-        return "backgrounds/"
+        return "image/f_5.png"
     else:
-        return "backgrounds/"
+        return "image/f_6.png"
 
 def get_level_emojis(points):
     if points < 10:
@@ -1321,14 +1405,14 @@ async def user_card(update: Update, context: CallbackContext):
 
     # Фон для изображения (градиент или текстура)
     try:
-        base_img = Image.open("background_image.jpg")
+        base_img = Image.open(f"{get_background_image(level)}")
     except FileNotFoundError:
         base_img = Image.new("RGB", (600, 300), (0, 0, 0))  # Черный фон по умолчанию
     img = base_img.resize((600, 300))  # Подгоняем под нужный размер
 
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("DejaVuSans.ttf.ttf", 28)
-    title_font = ImageFont.truetype("DejaVuSans.ttf.ttf", 32)
+    font = ImageFont.truetype("arial.ttf", 28)
+    title_font = ImageFont.truetype("arial.ttf", 32)
     emoji_font = ImageFont.truetype("segoe.ttf", 28)
     emoji_avatar_font = ImageFont.truetype("segoe.ttf", 16)
 
@@ -1350,7 +1434,7 @@ async def user_card(update: Update, context: CallbackContext):
         img.paste(avatar, (485, 5), mask)  # Вставка аватарки на картинку
     else:
         print("Фото пользователя не найдено. Использую default_avatar")
-        avatar = Image.open("default_avatar.png")  # Убедись, что у тебя есть этот файл
+        avatar = Image.open("image/default_avatar.png")  # Убедись, что у тебя есть этот файл
         avatar = avatar.resize((100, 100))  # Размер аватарки
         
         mask = Image.new('L', (100, 100), 0)
@@ -1376,7 +1460,7 @@ async def user_card(update: Update, context: CallbackContext):
     draw.text((50, 130), f"Титулован как {family_title}", font=font, fill="black")
     draw.text((50, 170), f"Имеет {pluralize_points(points)}", font=font, fill="black")
     draw.text((50, 210), f"Уровень {level}: {title}", font=font, fill="black")
-    draw.text((50, 250), f"Из {games} {igra(games)} {wins} {pobeda(wins)}, это {float(win_rate):.1f}%", font=font, fill="black")
+    draw.text((50, 250), f"Из {games} {igra(games)} {wins} {pobeda(wins)}, это {int(win_rate)}%", font=font, fill="black")
 
     # Сохранение и отправка картинки
     bio = io.BytesIO()
@@ -1415,7 +1499,7 @@ async def set_admin(update: Update, context: CallbackContext):
 # Ежедневное начисление очков
 async def daily_points_task():
     while True:
-        await asyncio.sleep(86400)  # сутки
+        await asyncio.sleep(7200)  # полчаса
         user_data = load_user_data()
         families = defaultdict(list)
 
@@ -1428,8 +1512,8 @@ async def daily_points_task():
 
         # Начисляем очки
         for fam_name, members in families.items():
-            base_points = 48
-            multiplier = 192 * len(members)
+            base_points = 30
+            multiplier = 50 * len(members)
             total = min(base_points + multiplier, 1000)  # Максимум 1000 на семью
             points_per_member = int(total / len(members))
             family_bonus = 0  # Общий бонус семьи
@@ -1516,9 +1600,9 @@ RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36
 BLACK_NUMBERS = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35}
 
 weights = {
-    "red": 55,   
-    "black": 40, 
-    "zero": 5  
+    "red": 45,   
+    "black": 45, 
+    "zero": 10
 }
 
 async def play_kazik(update: Update, context: CallbackContext):
@@ -1582,9 +1666,9 @@ async def play_kazik(update: Update, context: CallbackContext):
             return
         
         adjacent_numbers = [
-            (1, 2), (2, 3), (4, 5), (5, 6), (7, 8), (8, 9), (10, 11), (11, 12),
-            (13, 14), (14, 15), (16, 17), (17, 18), (19, 20), (20, 21), (22, 23),
-            (23, 24), (25, 26), (26, 27), (28, 29), (29, 30), (31, 32), (32, 33), (34, 35), (35, 36)
+            (1, 2), (2, 3), (3,4), (4, 5), (5, 6), (6,7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12),
+            (12, 13), (13, 14), (14, 15), (15, 16), (16, 17), (17, 18), (18, 19), (19, 20), (20, 21), (21, 22), (22, 23),
+            (23, 24), (24, 25), (25, 26), (26, 27), (27, 28), (28, 29), (29, 30), (30, 31), (31, 32), (32, 33), (33, 34), (34, 35), (35, 36)
         ]
         
         if (bet_values[0], bet_values[1]) not in adjacent_numbers and (bet_values[1], bet_values[0]) not in adjacent_numbers:
@@ -1638,17 +1722,17 @@ async def play_kazik(update: Update, context: CallbackContext):
         else:
             multiplier = 0
     elif bet_type == "F":  # Ставка на ряд (колонку)
-        if bet_value not in ["1st", "2nd", "3rd"]:
-            await reply_and_delete(update, context, "❌ Неверная ставка. Доступные ряды: 1st, 2nd, 3rd")
+        if bet_value not in ["1", "2", "3"]:
+            await reply_and_delete(update, context, "❌ Неверная ставка. Доступные ряды: 1, 2, 3")
             return
         
         first_column = {1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34}
         second_column = {2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35}
         third_column = {3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36}
         
-        if (bet_value == "1st" and result_number in first_column) or \
-           (bet_value == "2nd" and result_number in second_column) or \
-           (bet_value == "3rd" and result_number in third_column):
+        if (bet_value == "1" and result_number in first_column) or \
+           (bet_value == "2" and result_number in second_column) or \
+           (bet_value == "3" and result_number in third_column):
             multiplier = payout_multipliers["F"]
         else:
             multiplier = 0
@@ -1738,7 +1822,7 @@ async def user_info(update: Update, context: CallbackContext):
     if target_id not in user_data:
         logger.warning(f"❌ Пользователь {target_id} не найден в user_data!")
         logger.debug(f"📜 Все загруженные ID: {list(user_data.keys())}")
-        await update.message.reply_text(f"❌ О тебе нет данных, голубиная ты пиписька ID: {target_id}")
+        await reply_and_delete(f"❌ О тебе нет данных, голубиная ты пиписька. Пропиши /start")
         return
 
     data = user_data[target_id]
@@ -1899,8 +1983,8 @@ async def kazik_rules(update: Update, context: CallbackContext):
             Эти ставки относятся к ставкам на равные шансы (H), выплата составляет 1 к 1.
             """
     )
-    await reply_and_delete(update, context, text)
-    await reply_and_delete(update, context, text_2)
+    await reply_and_delete(update, context, text, delete_after=120)
+    await reply_and_delete(update, context, text_2, delete_after=120)
 
     
     
@@ -2135,11 +2219,12 @@ async def show_help(update: Update, context: CallbackContext):
     /kazik - Казино (асу)
     /kazik_rules - Правила игры в /kazik
     /usercard - Посмотреть статистику (победы считаются в /kazik и /guess)
+    /anime - Рандомное аниме
     """
     await reply_and_delete(update, context, help_text)
 
 async def test_command_handler(update: Update, context: CallbackContext):
-    logger.debug(f"🔥 Поймал команду: {update.message.text}")
+    return f"Поймал команду: {update.message.text}"
 
 
 async def change_role(update: Update, context: CallbackContext):
@@ -2175,11 +2260,18 @@ async def debug_all_messages(update: Update, context: CallbackContext):
     logger.debug(f"📩 Получено обновление: {update}")
     await log_to_channel("INFO", f"Получено обновление: {update}")
 
+async def my_channels(update: Update, context: CallbackContext):
+    chat = await context.bot.get_chat("@username_канала")  # Замени на юзернейм канала
+    await update.message.reply_text(f"📢 ID канала: {chat.id}")
+
+
 async def run_bot():
     app = Application.builder().token(TOKEN).build()
+    error = app.add_error_handler(lambda update, context: logger.error(f"Error: {context.error}"))
     
     asyncio.create_task(daily_points_task())
     
+    app.add_handler(CommandHandler("my_channels", my_channels))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("role", role))
     app.add_handler(CommandHandler("changerole", change_role))
@@ -2218,19 +2310,24 @@ async def run_bot():
     app.add_handler(CommandHandler("kazik", play_kazik))
     app.add_handler(CommandHandler("usercard", user_card))
     app.add_handler(CommandHandler("kazik_rules", kazik_rules))
+    app.add_handler(CommandHandler("anime", send_random_anime))
     app.add_handler(CallbackQueryHandler(handle_join_request, pattern="^(accept_join|reject_join)_"))
     app.add_handler(CallbackQueryHandler(handle_action_response))
     
+    app.add_handler(ChatMemberHandler(welcome_new_member, chat_member_types=ChatMemberHandler.ANY_CHAT_MEMBER))
+
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & game_filter, handle_guess))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_mute))
     app.add_handler(MessageHandler(filters.COMMAND & ~filters.Regex(r'^/brigada'), delete_user_command), group=1)
-    
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_new_users))
+
 
     await log_to_channel("INFO", 
-        "✅ Бот запущен и подключён к защите от вылетов.\n"
+        "✅ Бот запущен\n"
         "HELP: /help - помощь с командами\n"
         f"NEW: {NEW}\n"
         f"FIXED: {FIXED}\n"
+        f"ERRORS: {error}"
     )
 
     while True:  # Бесконечный цикл с защитой от вылетов
@@ -2245,7 +2342,7 @@ async def run_bot():
 if __name__ == "__main__":
     import asyncio
     import nest_asyncio
-
+    
     nest_asyncio.apply()  
 
     loop = asyncio.get_event_loop()

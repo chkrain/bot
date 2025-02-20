@@ -3,3 +3,4 @@ flask
 aiohttp
 nest_asyncio
 pillow
+pymongo
